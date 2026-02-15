@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Recipes Platform",
+    "slug": "recipes-platform-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F4EFE6"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.recipes.platform",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4855475e-8e1d-42b9-bde0-2ad4f94b2d4b"
+      }
+    }
+  }
+}

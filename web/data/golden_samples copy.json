@@ -1,0 +1,1044 @@
+[
+  {
+    "id": "93155411",
+    "pluNumber": 93155411,
+    "title": "Chia and Peanut Cookies",
+    "categoryPath": [
+      "Bakery Cold & Hot"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "50 G Seed Chia UK 1KG SEECHIUK",
+        "qty": 50.0,
+        "unit": "G",
+        "item": "Seed Chia UK 1KG SEECHIUK"
+      },
+      {
+        "text": "360 G Bananas Premium Pack of 8",
+        "qty": 360.0,
+        "unit": "G",
+        "item": "Bananas Premium Pack of 8"
+      },
+      {
+        "text": "120 ML Yoghurt Natural Low Fat Catering 4.6L",
+        "qty": 120.0,
+        "unit": "ML",
+        "item": "Yoghurt Natural Low Fat Catering 4.6L"
+      },
+      {
+        "text": "100 G Peanut Butter Crunchy Deurrs 2.5KG",
+        "qty": 100.0,
+        "unit": "G",
+        "item": "Peanut Butter Crunchy Deurrs 2.5KG"
+      },
+      {
+        "text": "75 G Chocolate Dark Callet Callebaut 2.5KG",
+        "qty": 75.0,
+        "unit": "G",
+        "item": "Chocolate Dark Callet Callebaut 2.5KG"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Chef's Tips: See"
+        }
+      ],
+      "text": "1. Chef's Tips: See"
+    },
+    "allergens": {
+      "gluten": "contains",
+      "crustaceans": "none",
+      "eggs": "none",
+      "fish": "none",
+      "peanuts": "may_contain",
+      "soya": "contains",
+      "milk": "contains",
+      "nuts": "may_contain",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "none",
+      "sulphites": "none",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 78.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 78.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Bakery Cold & Hot/93155411.pdf"
+    }
+  },
+  {
+    "id": "93069643",
+    "pluNumber": 93069643,
+    "title": "Scrambled Egg",
+    "categoryPath": [
+      "Breakfast"
+    ],
+    "portions": 1.0,
+    "ingredients": [
+      {
+        "text": "2 EA Egg Medium Free Range",
+        "qty": 2.0,
+        "unit": "EA",
+        "item": "Egg Medium Free Range"
+      },
+      {
+        "text": "15 ML Milk Semi Skim Poly RT 2.27L",
+        "qty": 15.0,
+        "unit": "ML",
+        "item": "Milk Semi Skim Poly RT 2.27L"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "whisk 2 eggs with the milk and cook in the microwave"
+        }
+      ],
+      "text": "1. whisk 2 eggs with the milk and cook in the microwave"
+    },
+    "allergens": {
+      "gluten": "none",
+      "crustaceans": "none",
+      "eggs": "contains",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "contains",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "none",
+      "sulphites": "none",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 104.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 104.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Breakfast/93069643.pdf"
+    }
+  },
+  {
+    "id": "93086257",
+    "pluNumber": 93086257,
+    "title": "Pastry",
+    "categoryPath": [
+      "Cakes & Desserts"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "4 EA Egg Medium Free Range",
+        "qty": 4.0,
+        "unit": "EA",
+        "item": "Egg Medium Free Range"
+      },
+      {
+        "text": "245 G Sugar Caster FairTrade 25KG",
+        "qty": 245.0,
+        "unit": "G",
+        "item": "Sugar Caster FairTrade 25KG"
+      },
+      {
+        "text": "2.05 EA Pear Conference",
+        "qty": 2.05,
+        "unit": "EA",
+        "item": "Pear Conference"
+      },
+      {
+        "text": "560 G Fruit Apple Bramley BB 1KG",
+        "qty": 560.0,
+        "unit": "G",
+        "item": "Fruit Apple Bramley BB 1KG"
+      },
+      {
+        "text": "0.5 EA Lemons BB",
+        "qty": 0.5,
+        "unit": "EA",
+        "item": "Lemons BB"
+      },
+      {
+        "text": "1 G Spice Cinnamon Ground 1KG CINGRO1K",
+        "qty": 1.0,
+        "unit": "G",
+        "item": "Spice Cinnamon Ground 1KG CINGRO1K"
+      },
+      {
+        "text": "10 G Herb Rosemary BB 100g",
+        "qty": 10.0,
+        "unit": "G",
+        "item": "Herb Rosemary BB 100g"
+      },
+      {
+        "text": "325 G Margarine Buttery Kerrymaid 2KG",
+        "qty": 325.0,
+        "unit": "G",
+        "item": "Margarine Buttery Kerrymaid 2KG"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Preheat the oven 180ºC. For the pastry: Cream together 3 eggs and 125 gm sugar add the 300 gm Flora Buttery and mix together gradually add the flour and salt until smooth and leave to rest for 1 hour."
+        },
+        {
+          "number": 2,
+          "text": "Roll out the pastry to 4mm thick on a lightly floured surface. Cut out 10 11cm circles and 10 8cm circles of pastry. Use the larger circle to line a non stick mini muffin tin and chill. Chill the 8cm circles as these will be the lids."
+        },
+        {
+          "number": 3,
+          "text": "For the filling: Peel quarter and core the pears and apples then slice thickly into a bowl. Zest and juice the lemon."
+        },
+        {
+          "number": 4,
+          "text": "Mix together 120 gm sugar (retain a little to sprinkle over later) the cinnamon thelemon juice and zest and stir gently into the pears and apples."
+        },
+        {
+          "number": 5,
+          "text": "Place the pear and apple slices into the lined muffin tins. Cut the remaining butter into 10 and dot each pie with butter and sprinkle with chopped rosemary."
+        },
+        {
+          "number": 6,
+          "text": "Place the smaller circles on top of the sliced pears and apples. Seal the edges well. Make a small hole in the top to allow steam to escape."
+        },
+        {
+          "number": 7,
+          "text": "Egg wash with lightly beaten egg and sprinkle with the remaining sugar."
+        },
+        {
+          "number": 8,
+          "text": "Bake at 180°c for 30 mins until the fruit is tender and the top is golden brown."
+        }
+      ],
+      "text": "1. Preheat the oven 180ºC. For the pastry: Cream together 3 eggs and 125 gm sugar add the 300 gm Flora Buttery and mix together gradually add the flour and salt until smooth and leave to rest for 1 hour. 2. Roll out the pastry to 4mm thick on a lightly floured surface. Cut out 10 11cm circles and 10 8cm circles of pastry. Use the larger circle to line a non stick mini muffin tin and chill. Chill the 8cm circles as these will be the lids. 3. For the filling: Peel quarter and core the pears and apples then slice thickly into a bowl. Zest and juice the lemon. 4. Mix together 120 gm sugar (retain a little to sprinkle over later) the cinnamon thelemon juice and zest and stir gently into the pears and apples. 5. Place the pear and apple slices into the lined muffin tins. Cut the remaining butter into 10 and dot each pie with butter and sprinkle with chopped rosemary. 6. Place the smaller circles on top of the sliced pears and apples. Seal the edges well. Make a small hole in the top to allow steam to escape. 7. Egg wash with lightly beaten egg and sprinkle with the remaining sugar. 8. Bake at 180°c for 30 mins until the fruit is tender and the top is golden brown."
+    },
+    "allergens": {
+      "gluten": "may_contain",
+      "crustaceans": "none",
+      "eggs": "may_contain",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "contains",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "none",
+      "sulphites": "none",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 202.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 202.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Cakes & Desserts/93086257.pdf"
+    }
+  },
+  {
+    "id": "93000807",
+    "pluNumber": 93000807,
+    "title": "Onion Bhajis",
+    "categoryPath": [
+      "Food Accompaniments"
+    ],
+    "portions": 35.0,
+    "ingredients": [
+      {
+        "text": "35 EA Onion Bhaji 30g",
+        "qty": 35.0,
+        "unit": "EA",
+        "item": "Onion Bhaji 30g"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Pre-heat the oven & cook at 170°C until golden brown & crisp. Ensure core temperature has been reached: 75°C ENG / 82°C SCOT."
+        }
+      ],
+      "text": "1. Pre-heat the oven & cook at 170°C until golden brown & crisp. Ensure core temperature has been reached: 75°C ENG / 82°C SCOT."
+    },
+    "allergens": {
+      "gluten": "none",
+      "crustaceans": "none",
+      "eggs": "none",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "none",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "none",
+      "sulphites": "none",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 30.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 30.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Food Accompaniments/93000807.pdf"
+    }
+  },
+  {
+    "id": "93067406",
+    "pluNumber": 93067406,
+    "title": "Chicken Fajita",
+    "categoryPath": [
+      "Hot Lunch"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "30 ML Juice Lemon 1L JUILEM1LT",
+        "qty": 30.0,
+        "unit": "ML",
+        "item": "Juice Lemon 1L JUILEM1LT"
+      },
+      {
+        "text": "10 EA Wrap Tortillas Plain Medium 10in",
+        "qty": 10.0,
+        "unit": "EA",
+        "item": "Wrap Tortillas Plain Medium 10in"
+      },
+      {
+        "text": "200 G Cream Soured 2KG",
+        "qty": 200.0,
+        "unit": "G",
+        "item": "Cream Soured 2KG"
+      },
+      {
+        "text": "420 G Pepper Red Premium 5KG",
+        "qty": 420.0,
+        "unit": "G",
+        "item": "Pepper Red Premium 5KG"
+      },
+      {
+        "text": "100 ML Oil Rapeseed Extended Life B/B 20L",
+        "qty": 100.0,
+        "unit": "ML",
+        "item": "Oil Rapeseed Extended Life B/B 20L"
+      },
+      {
+        "text": "20 G Sugar Cane Pure Granulated FT 1KG",
+        "qty": 20.0,
+        "unit": "G",
+        "item": "Sugar Cane Pure Granulated FT 1KG"
+      },
+      {
+        "text": "300 G Onion Red PK 10KG",
+        "qty": 300.0,
+        "unit": "G",
+        "item": "Onion Red PK 10KG"
+      },
+      {
+        "text": "1 KG Chicken Supreme S/L UK RT MB 170- 200g",
+        "qty": 1.0,
+        "unit": "KG",
+        "item": "Chicken Supreme S/L UK RT MB 170- 200g"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Whisk together the oil paprika salt Cajun spice and lemon juice in a large bowl."
+        },
+        {
+          "number": 2,
+          "text": "Cut the chicken breasts into strips and marinade in the oil over night. Slice the onions and peppers and arrange on a suitable service tray."
+        },
+        {
+          "number": 3,
+          "text": "Build each portion to order by stir frying the vegetables and chicken strips and placing into a wrap add a little salsa to each portion and roll."
+        },
+        {
+          "number": 4,
+          "text": "Allow customers to self serve the sour cream."
+        }
+      ],
+      "text": "1. Whisk together the oil paprika salt Cajun spice and lemon juice in a large bowl. 2. Cut the chicken breasts into strips and marinade in the oil over night. Slice the onions and peppers and arrange on a suitable service tray. 3. Build each portion to order by stir frying the vegetables and chicken strips and placing into a wrap add a little salsa to each portion and roll. 4. Allow customers to self serve the sour cream."
+    },
+    "allergens": {
+      "gluten": "may_contain",
+      "crustaceans": "none",
+      "eggs": "none",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "may_contain",
+      "nuts": "none",
+      "celery": "contains",
+      "mustard": "none",
+      "sesame": "none",
+      "sulphites": "contains",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 280.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 280.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Hot Lunch/93067406.pdf"
+    }
+  },
+  {
+    "id": "93070224",
+    "pluNumber": 93070224,
+    "title": "Eat Middle Eastern Fattoush Salad",
+    "categoryPath": [
+      "Salads"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "100 G Radish 250g",
+        "qty": 100.0,
+        "unit": "G",
+        "item": "Radish 250g"
+      },
+      {
+        "text": "90 G Pepper Red Premium 5KG",
+        "qty": 90.0,
+        "unit": "G",
+        "item": "Pepper Red Premium 5KG"
+      },
+      {
+        "text": "20 G Herb Parsley Flat Leaf Bunch BB 100g",
+        "qty": 20.0,
+        "unit": "G",
+        "item": "Herb Parsley Flat Leaf Bunch BB 100g"
+      },
+      {
+        "text": "100 ML Oil Pomace KTC 5L",
+        "qty": 100.0,
+        "unit": "ML",
+        "item": "Oil Pomace KTC 5L"
+      },
+      {
+        "text": "100 G Tomato Cherry Catering 4KG",
+        "qty": 100.0,
+        "unit": "G",
+        "item": "Tomato Cherry Catering 4KG"
+      },
+      {
+        "text": "15 ML Juice Lemon 1L JUILEM1LT",
+        "qty": 15.0,
+        "unit": "ML",
+        "item": "Juice Lemon 1L JUILEM1LT"
+      },
+      {
+        "text": "1.2 EA Spring Onion 8-10 Bulbs Premium",
+        "qty": 1.2,
+        "unit": "EA",
+        "item": "Spring Onion 8-10 Bulbs Premium"
+      },
+      {
+        "text": "2 EA Bread White Lebanese Khobes 8inch 5s S",
+        "qty": 2.0,
+        "unit": "EA",
+        "item": "Bread White Lebanese Khobes 8inch 5s S"
+      },
+      {
+        "text": "300 G Lettuce Cos Premium 300g",
+        "qty": 300.0,
+        "unit": "G",
+        "item": "Lettuce Cos Premium 300g"
+      },
+      {
+        "text": "200 G Cucumber Premium 400g",
+        "qty": 200.0,
+        "unit": "G",
+        "item": "Cucumber Premium 400g"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Preheat oven to 160ºC. Chop the lettuce wash and drain well. Cut the cucumber in half scoop the seeds out and cut the cucumber on and angle into slices."
+        },
+        {
+          "number": 2,
+          "text": "Cut the cherry tomatoes into quarters. Deseed and cut the pepper into fine strips. Thinly slice the radishes. Chop the parsley. Shred and wash the spring onions."
+        },
+        {
+          "number": 3,
+          "text": "Warm the bread in the oven until slightly crisp. Break the breads into small chunks."
+        },
+        {
+          "number": 4,
+          "text": "Combine all of the ingredients together and mix well and serve."
+        }
+      ],
+      "text": "1. Preheat oven to 160ºC. Chop the lettuce wash and drain well. Cut the cucumber in half scoop the seeds out and cut the cucumber on and angle into slices. 2. Cut the cherry tomatoes into quarters. Deseed and cut the pepper into fine strips. Thinly slice the radishes. Chop the parsley. Shred and wash the spring onions. 3. Warm the bread in the oven until slightly crisp. Break the breads into small chunks. 4. Combine all of the ingredients together and mix well and serve."
+    },
+    "allergens": {
+      "gluten": "may_contain",
+      "crustaceans": "none",
+      "eggs": "none",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "none",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "none",
+      "sulphites": "contains",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 102.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 102.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Salads/93070224.pdf"
+    }
+  },
+  {
+    "id": "93086068",
+    "pluNumber": 93086068,
+    "title": "The Big Breakfast Half Baguette",
+    "categoryPath": [
+      "Sandwiches"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "50 ML Sauce Mayonnaise Light Heinz 5L",
+        "qty": 50.0,
+        "unit": "ML",
+        "item": "Sauce Mayonnaise Light Heinz 5L"
+      },
+      {
+        "text": "100 G Tomato Catering Pack 6KG",
+        "qty": 100.0,
+        "unit": "G",
+        "item": "Tomato Catering Pack 6KG"
+      },
+      {
+        "text": "1 KG Baguette White Demi Part Baked",
+        "qty": 1.0,
+        "unit": "KG",
+        "item": "Baguette White Demi Part Baked"
+      },
+      {
+        "text": "62 G Bacon Crispy Cooked Unsmoked Streaky 1KG",
+        "qty": 62.0,
+        "unit": "G",
+        "item": "Bacon Crispy Cooked Unsmoked Streaky 1KG"
+      },
+      {
+        "text": "2.5 EA Egg Boiled Hard Free Range",
+        "qty": 2.5,
+        "unit": "EA",
+        "item": "Egg Boiled Hard Free Range"
+      },
+      {
+        "text": "350 G SAUSAGES LINCOLNSHIRE 8S KG BF IMS of Smithfield Ltd 5B87",
+        "qty": 350.0,
+        "unit": "G",
+        "item": "SAUSAGES LINCOLNSHIRE 8S KG BF IMS of Smithfield Ltd 5B87"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Cook the baguettes as per manufacturer's instructions. Leave to cool for 30 minutes then cut open."
+        },
+        {
+          "number": 2,
+          "text": "Cook the sausages to 72*c. Cut the sausages into 3 long slices. Cut the tomatoes into slices then cut each slice in half. Slice the egg."
+        },
+        {
+          "number": 3,
+          "text": "Spread the mayonnaise onto the base of each baguette. Place the tomatoes on top Place the sliced egg on top of the tomato. Place the sausage and bacon on top of the egg. Season with the pepper."
+        },
+        {
+          "number": 4,
+          "text": "Cut each baguette in half."
+        }
+      ],
+      "text": "1. Cook the baguettes as per manufacturer's instructions. Leave to cool for 30 minutes then cut open. 2. Cook the sausages to 72*c. Cut the sausages into 3 long slices. Cut the tomatoes into slices then cut each slice in half. Slice the egg. 3. Spread the mayonnaise onto the base of each baguette. Place the tomatoes on top Place the sliced egg on top of the tomato. Place the sausage and bacon on top of the egg. Season with the pepper. 4. Cut each baguette in half."
+    },
+    "allergens": {
+      "gluten": "may_contain",
+      "crustaceans": "none",
+      "eggs": "contains",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "none",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "may_contain",
+      "sulphites": "contains",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 134.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 134.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Sandwiches/93086068.pdf"
+    }
+  },
+  {
+    "id": "93075641",
+    "pluNumber": 93075641,
+    "title": "Sig Salad Aubergine with Oregano  Parsley Tahini",
+    "categoryPath": [
+      "Signature Salads"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "1.2 KG Aubergines Catering 5KG",
+        "qty": 1.2,
+        "unit": "KG",
+        "item": "Aubergines Catering 5KG"
+      },
+      {
+        "text": "6 G Salt Sea Maldon Tub 1.5KG",
+        "qty": 6.0,
+        "unit": "G",
+        "item": "Salt Sea Maldon Tub 1.5KG"
+      },
+      {
+        "text": "34 G Paste Tahini 1KG Belazu Ingredient Company PA061G",
+        "qty": 34.0,
+        "unit": "G",
+        "item": "Paste Tahini 1KG Belazu Ingredient Company PA061G"
+      },
+      {
+        "text": "1 G Herb Parsley Flat Leaf Bunch BB 100g",
+        "qty": 1.0,
+        "unit": "G",
+        "item": "Herb Parsley Flat Leaf Bunch BB 100g"
+      },
+      {
+        "text": "70 G Garlic Peeled Premium 1KG",
+        "qty": 70.0,
+        "unit": "G",
+        "item": "Garlic Peeled Premium 1KG"
+      },
+      {
+        "text": "70 G Chilli Red Thai PP 250g Reynolds Catering Supplies Ltd 3603EA",
+        "qty": 70.0,
+        "unit": "G",
+        "item": "Chilli Red Thai PP 250g Reynolds Catering Supplies Ltd 3603EA"
+      },
+      {
+        "text": "20 G CHILLI RED THAI First Choice Produce Ltd CHILRT",
+        "qty": 20.0,
+        "unit": "G",
+        "item": "CHILLI RED THAI First Choice Produce Ltd CHILRT"
+      },
+      {
+        "text": "625 G Lemon Premium 120g",
+        "qty": 625.0,
+        "unit": "G",
+        "item": "Lemon Premium 120g"
+      },
+      {
+        "text": "100 G Herb Bunched Coriander BB 100g",
+        "qty": 100.0,
+        "unit": "G",
+        "item": "Herb Bunched Coriander BB 100g"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Half the aubergine and cut into 12 wedges in total. Season and cover well in olive oil. Roast for 18 minutes at 210*C degrees."
+        },
+        {
+          "number": 2,
+          "text": "Make the marinade: mix 30g chopped corriander 30g chopped oregano 50g finley chopped red chilli 4 cloves crushed garlic zest and juice of 1 lemon salt and pepper."
+        },
+        {
+          "number": 3,
+          "text": "When the aubergines are still warm dress with the marinade and leave for 20 minutes then mix gently."
+        },
+        {
+          "number": 4,
+          "text": "Make the tahini dressing: mix 280g tahini with 200ml water 60ml lemon juice 4 cloves of garlic crushed seasoning. Mix together gently with a spoon and the add 100g chopped parsley."
+        },
+        {
+          "number": 5,
+          "text": "Layer the salad up alternating with the tahini. Dress the salad with oregano and coriander tops and a drizzle of dressing."
+        }
+      ],
+      "text": "1. Half the aubergine and cut into 12 wedges in total. Season and cover well in olive oil. Roast for 18 minutes at 210*C degrees. 2. Make the marinade: mix 30g chopped corriander 30g chopped oregano 50g finley chopped red chilli 4 cloves crushed garlic zest and juice of 1 lemon salt and pepper. 3. When the aubergines are still warm dress with the marinade and leave for 20 minutes then mix gently. 4. Make the tahini dressing: mix 280g tahini with 200ml water 60ml lemon juice 4 cloves of garlic crushed seasoning. Mix together gently with a spoon and the add 100g chopped parsley. 5. Layer the salad up alternating with the tahini. Dress the salad with oregano and coriander tops and a drizzle of dressing."
+    },
+    "allergens": {
+      "gluten": "none",
+      "crustaceans": "none",
+      "eggs": "none",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "none",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "contains",
+      "sulphites": "none",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 194.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 194.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Signature Salads/93075641.pdf"
+    }
+  },
+  {
+    "id": "93084527",
+    "pluNumber": 93084527,
+    "title": "Noodle Bar Vegetable & Noodle Soup 16oz",
+    "categoryPath": [
+      "Soups and Broths"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "10 PTN NB VEG MIX",
+        "qty": 10.0,
+        "unit": "PTN",
+        "item": "NB VEG MIX"
+      },
+      {
+        "text": "2.5 PTN NB CHOP SUEY NDL",
+        "qty": 2.5,
+        "unit": "PTN",
+        "item": "NB CHOP SUEY NDL"
+      },
+      {
+        "text": "10 PTN NB SOUP STOCK",
+        "qty": 10.0,
+        "unit": "PTN",
+        "item": "NB SOUP STOCK"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "1.Place the noodles in the base of each pot and add the vegetables. Seal with the lid place into the fridge stock will be added at the counter. Portion Spec: All cooked weights. Noodle 50gm Vege Mix 100gm Soup Stock 200ml"
+        }
+      ],
+      "text": "1. 1.Place the noodles in the base of each pot and add the vegetables. Seal with the lid place into the fridge stock will be added at the counter. Portion Spec: All cooked weights. Noodle 50gm Vege Mix 100gm Soup Stock 200ml"
+    },
+    "allergens": {
+      "gluten": "may_contain",
+      "crustaceans": "none",
+      "eggs": "contains",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "none",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "none",
+      "sulphites": "none",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 365.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 365.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Soups and Broths/93084527.pdf"
+    }
+  },
+  {
+    "id": "93178306",
+    "pluNumber": 93178306,
+    "title": "CheeseBurger Kids",
+    "categoryPath": [
+      "Hot Lunch"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "1.14 KG Burger Beef 100% IQF 113.5g",
+        "qty": 1.14,
+        "unit": "KG",
+        "item": "Burger Beef 100% IQF 113.5g"
+      },
+      {
+        "text": "10 EA Bun Burger Seeded Sliced 4in",
+        "qty": 10.0,
+        "unit": "EA",
+        "item": "Bun Burger Seeded Sliced 4in"
+      },
+      {
+        "text": "200 G Sliced cheddar cheese",
+        "qty": 200.0,
+        "unit": "G",
+        "item": "Sliced cheddar cheese"
+      },
+      {
+        "text": "400 G Onion Pk 25KG",
+        "qty": 400.0,
+        "unit": "G",
+        "item": "Onion Pk 25KG"
+      },
+      {
+        "text": "200 ML Oil Rapeseed Extended Life B/B 20L",
+        "qty": 200.0,
+        "unit": "ML",
+        "item": "Oil Rapeseed Extended Life B/B 20L"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "Peel and thinly slice the onions. Add the oil into a pan add the onions. Cook over a medium heat until softened."
+        },
+        {
+          "number": 2,
+          "text": "Cook the burger on the BBQ colouring on each side until a core temperature of 65*C is achieved."
+        },
+        {
+          "number": 3,
+          "text": "Serve in the bun with the onions on top."
+        }
+      ],
+      "text": "1. Peel and thinly slice the onions. Add the oil into a pan add the onions. Cook over a medium heat until softened. 2. Cook the burger on the BBQ colouring on each side until a core temperature of 65*C is achieved. 3. Serve in the bun with the onions on top."
+    },
+    "allergens": {
+      "gluten": "may_contain",
+      "crustaceans": "none",
+      "eggs": "none",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "may_contain",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "none",
+      "sesame": "contains",
+      "sulphites": "none",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 201.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 201.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Hot Lunch/93178306.pdf"
+    }
+  },
+  {
+    "id": "93214718",
+    "pluNumber": 93214718,
+    "title": "BBQ Brisket",
+    "categoryPath": [
+      "Hot Lunch"
+    ],
+    "portions": 10.0,
+    "ingredients": [
+      {
+        "text": "15 G Sugar Caster FairTrade 25KG",
+        "qty": 15.0,
+        "unit": "G",
+        "item": "Sugar Caster FairTrade 25KG"
+      },
+      {
+        "text": "50 ML Oil Rapeseed Extended Life KTC 5L",
+        "qty": 50.0,
+        "unit": "ML",
+        "item": "Oil Rapeseed Extended Life KTC 5L"
+      },
+      {
+        "text": "120 G Onion Pk 25KG",
+        "qty": 120.0,
+        "unit": "G",
+        "item": "Onion Pk 25KG"
+      },
+      {
+        "text": "30 G Paste Tomato 800g",
+        "qty": 30.0,
+        "unit": "G",
+        "item": "Paste Tomato 800g"
+      },
+      {
+        "text": "30 G VegetableBouillon Powder Chefs Pass 800g",
+        "qty": 30.0,
+        "unit": "G",
+        "item": "VegetableBouillon Powder Chefs Pass 800g"
+      },
+      {
+        "text": "80 ML Sauce Smoked Hickory BBQ 5L SAUBBQHIC5L",
+        "qty": 80.0,
+        "unit": "ML",
+        "item": "Sauce Smoked Hickory BBQ 5L SAUBBQHIC5L"
+      },
+      {
+        "text": "10 PTN BBQ Potato Salad",
+        "qty": 10.0,
+        "unit": "PTN",
+        "item": "BBQ Potato Salad"
+      }
+    ],
+    "method": {
+      "steps": [
+        {
+          "number": 1,
+          "text": "For the rub; Mix all the spices sugar and salt together in a small bowl and set aside."
+        },
+        {
+          "number": 2,
+          "text": "For the brisket; Trim down any think layers of fat then rub the spice rub all over the brisket. In a pot add 500ml water the tomato paste veg stock heat and whisk to incorporate. Place the brisket in a gastro tray fat side down with the roughly diced onion tomato stock and cover with a lid or foil."
+        },
+        {
+          "number": 3,
+          "text": "Roast in the oven overnight at 85*c OR for 5 hours at 160*c."
+        },
+        {
+          "number": 4,
+          "text": "For the BBQ sauce; Blitz any cooking liquor and onions left in the gastro try with the BBQ sauce."
+        },
+        {
+          "number": 5,
+          "text": "Brush on some of the BBQ sauce on the brisket and put back in the oven at 220 *c and caramelize for 5-10 min."
+        },
+        {
+          "number": 6,
+          "text": "Serve with more BBQ sauce the wrap and sides (potato salad & coleslaw). COOKING TIPS: you can reduce the cooking liqour right down and add to the BBQ sauce for extra flavour and depth."
+        }
+      ],
+      "text": "1. For the rub; Mix all the spices sugar and salt together in a small bowl and set aside. 2. For the brisket; Trim down any think layers of fat then rub the spice rub all over the brisket. In a pot add 500ml water the tomato paste veg stock heat and whisk to incorporate. Place the brisket in a gastro tray fat side down with the roughly diced onion tomato stock and cover with a lid or foil. 3. Roast in the oven overnight at 85*c OR for 5 hours at 160*c. 4. For the BBQ sauce; Blitz any cooking liquor and onions left in the gastro try with the BBQ sauce. 5. Brush on some of the BBQ sauce on the brisket and put back in the oven at 220 *c and caramelize for 5-10 min. 6. Serve with more BBQ sauce the wrap and sides (potato salad & coleslaw). COOKING TIPS: you can reduce the cooking liqour right down and add to the BBQ sauce for extra flavour and depth."
+    },
+    "allergens": {
+      "gluten": "may_contain",
+      "crustaceans": "none",
+      "eggs": "none",
+      "fish": "none",
+      "peanuts": "none",
+      "soya": "none",
+      "milk": "may_contain",
+      "nuts": "none",
+      "celery": "none",
+      "mustard": "may_contain",
+      "sesame": "none",
+      "sulphites": "contains",
+      "lupin": "none",
+      "molluscs": "none"
+    },
+    "nutrition": {
+      "portionNetWeightG": 563.0,
+      "perServing": {},
+      "per100g": {},
+      "riPercent": {}
+    },
+    "portionNetWeightG": 563.0,
+    "visibility": {
+      "enterprise": false,
+      "public": false
+    },
+    "source": {
+      "pdfPath": "Recipe Book/Hot Lunch/93214718.pdf"
+    }
+  }
+]
