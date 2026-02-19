@@ -22,7 +22,7 @@ export default async function HomePage() {
 
           <div className="max-w-full space-y-4">
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl md:text-6xl">
-              Welcome to your recipetheque
+              Welcome to your recipetheques
             </h1>
             <p className="text-base text-muted-foreground sm:text-lg">
               Access thousands of Chefs crafted recipes all in one place.
