@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     user: {
       id: user.id,
       email: user.email,
+      display_name: user.displayName,
       role: user.role,
     },
     entitlements: {

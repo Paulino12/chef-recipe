@@ -1,10 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
 import { computeRecipeAccess, SubscriptionStatus } from "@/lib/api/access";
+import { Database } from "@/lib/api/supabaseDatabase";
 
 type SubscriberRow = {
   user_id: string;
   email: string;
+  display_name: string | null;
   subscription_status: SubscriptionStatus;
   enterprise_granted: boolean;
   updated_at: string;
@@ -13,6 +15,7 @@ type SubscriberRow = {
 type UserAccessViewRow = {
   user_id: string | null;
   email: string | null;
+  display_name: string | null;
   role: string | null;
   subscription_status: SubscriptionStatus | null;
   enterprise_granted: boolean | null;
@@ -28,6 +31,7 @@ type TimestampRow = {
 export type AdminSubscriber = {
   user_id: string;
   email: string;
+  display_name: string | null;
   subscription_status: SubscriptionStatus;
   enterprise_granted: boolean;
   can_view_public: boolean;
@@ -43,12 +47,18 @@ export type ListSubscribersOptions = {
   pageSize?: number;
 };
 
+export type SubscriptionStatusUpdate = {
+  user_id: string;
+  subscription_status: SubscriptionStatus;
+  updated_at: string;
+};
+
 type SupabaseEnv = {
   url: string;
   serviceRoleKey: string;
 };
 
-type SupabaseAdminClient = ReturnType<typeof createClient<any>>;
+type SupabaseAdminClient = ReturnType<typeof createClient<Database>>;
 
 const VALID_STATUSES = new Set<SubscriptionStatus>([
   "trialing",
@@ -62,6 +72,7 @@ const DEV_SUBSCRIBERS_SEED: SubscriberRow[] = [
   {
     user_id: "sub_001",
     email: "alice@example.com",
+    display_name: "Alice",
     subscription_status: "active",
     enterprise_granted: false,
     updated_at: "2026-02-14T12:00:00.000Z",
@@ -69,6 +80,7 @@ const DEV_SUBSCRIBERS_SEED: SubscriberRow[] = [
   {
     user_id: "sub_002",
     email: "bob@example.com",
+    display_name: "Bob",
     subscription_status: "expired",
     enterprise_granted: true,
     updated_at: "2026-02-14T12:00:00.000Z",
@@ -76,13 +88,14 @@ const DEV_SUBSCRIBERS_SEED: SubscriberRow[] = [
   {
     user_id: "sub_003",
     email: "carol@example.com",
+    display_name: "Carol",
     subscription_status: "trialing",
     enterprise_granted: true,
     updated_at: "2026-02-14T12:00:00.000Z",
   },
 ];
 
-let devSubscribersStore: SubscriberRow[] = DEV_SUBSCRIBERS_SEED.map((row) => ({ ...row }));
+const devSubscribersStore: SubscriberRow[] = DEV_SUBSCRIBERS_SEED.map((row) => ({ ...row }));
 
 function parseSubscriptionStatus(value: string | null | undefined): SubscriptionStatus | null {
   if (!value) return null;
@@ -111,7 +124,7 @@ function getSupabaseEnv(): SupabaseEnv | null {
 
 function createSupabaseAdminClient(env: SupabaseEnv): SupabaseAdminClient {
   // Server-only admin client: used for owner APIs (subscriber list + grant/revoke).
-  return createClient<any>(env.url, env.serviceRoleKey, {
+  return createClient<Database>(env.url, env.serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -152,6 +165,7 @@ function toAdminSubscriber(row: SubscriberRow): AdminSubscriber {
   return {
     user_id: row.user_id,
     email: row.email,
+    display_name: row.display_name,
     subscription_status: row.subscription_status,
     enterprise_granted: row.enterprise_granted,
     can_view_public: access.canViewPublic,
@@ -166,12 +180,14 @@ function toAdminSubscriberFromView(
 ): AdminSubscriber | null {
   const userId = row.user_id?.trim() || "";
   const email = row.email?.trim() || "";
+  const displayName = row.display_name?.trim() || null;
   const status = parseSubscriptionStatus(row.subscription_status) || "expired";
   if (!userId || !email) return null;
 
   return {
     user_id: userId,
     email,
+    display_name: displayName,
     subscription_status: status,
     enterprise_granted: Boolean(row.enterprise_granted),
     can_view_public: Boolean(row.can_view_public),
@@ -193,6 +209,25 @@ function updateEnterpriseGrantDev(userId: string, enterpriseGranted: boolean) {
 
   devSubscribersStore[index] = updated;
   return toAdminSubscriber(updated);
+}
+
+function updateSubscriptionStatusDev(userId: string, status: SubscriptionStatus) {
+  const index = devSubscribersStore.findIndex((row) => row.user_id === userId);
+  if (index < 0) return null;
+
+  const current = devSubscribersStore[index];
+  const updated: SubscriberRow = {
+    ...current,
+    subscription_status: status,
+    updated_at: new Date().toISOString(),
+  };
+
+  devSubscribersStore[index] = updated;
+  return {
+    user_id: updated.user_id,
+    subscription_status: updated.subscription_status,
+    updated_at: updated.updated_at,
+  } satisfies SubscriptionStatusUpdate;
 }
 
 function isUuid(value: string | null | undefined) {
@@ -254,14 +289,16 @@ async function listSubscribersFromSupabase(options: ListSubscribersOptions = {})
   let query = supabase
     .from("v_user_access")
     .select(
-      "user_id,email,role,subscription_status,enterprise_granted,can_view_public,can_view_enterprise",
+      "user_id,email,display_name,role,subscription_status,enterprise_granted,can_view_public,can_view_enterprise",
       { count: "exact" },
     )
     .eq("role", "subscriber")
     .order("email", { ascending: true })
     .range(start, end);
 
-  if (q) query = query.ilike("email", `%${q}%`);
+  if (q) {
+    query = query.or(`email.ilike.%${q}%,display_name.ilike.%${q}%`);
+  }
   if (options.status) query = query.eq("subscription_status", options.status);
   if (typeof options.enterprise === "boolean") {
     query = query.eq("enterprise_granted", options.enterprise);
@@ -355,6 +392,71 @@ async function updateEnterpriseGrantSupabase(
   };
 }
 
+async function updateSubscriptionStatusSupabase(
+  userId: string,
+  status: SubscriptionStatus,
+  actorUserId?: string,
+  reason?: string,
+) {
+  // Owner action: set subscription status for billing simulation/testing.
+  const env = getSupabaseEnv();
+  if (!env) return null;
+  if (!isUuid(userId)) return null;
+
+  const supabase = createSupabaseAdminClient(env);
+
+  const profileResult = await supabase
+    .from("user_profiles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("role", "subscriber")
+    .maybeSingle<{ user_id: string | null }>();
+
+  if (profileResult.error) throw new Error(profileResult.error.message);
+  if (!profileResult.data?.user_id) return null;
+
+  const now = new Date().toISOString();
+  const trialEndsAt = status === "trialing" ? now : null;
+  const currentPeriodEndsAt = status === "trialing" || status === "active" ? now : null;
+
+  const upsertResult = await supabase
+    .from("user_subscriptions")
+    .upsert(
+      {
+        user_id: userId,
+        status,
+        trial_ends_at: trialEndsAt,
+        current_period_ends_at: currentPeriodEndsAt,
+        provider: "manual_owner",
+      },
+      { onConflict: "user_id" },
+    )
+    .select("updated_at")
+    .single<{ updated_at: string | null }>();
+
+  if (upsertResult.error) throw new Error(upsertResult.error.message);
+
+  const safeActorUserId: string | null = isUuid(actorUserId) ? (actorUserId ?? null) : null;
+  const auditResult = await supabase.from("audit_log").insert({
+    actor_user_id: safeActorUserId,
+    target_user_id: userId,
+    action: "set_subscription_status",
+    reason: reason?.trim() || null,
+    metadata: {
+      subscription_status: status,
+      provider: "manual_owner",
+    },
+  });
+
+  if (auditResult.error) throw new Error(auditResult.error.message);
+
+  return {
+    user_id: userId,
+    subscription_status: status,
+    updated_at: parseIsoOrFallback(upsertResult.data?.updated_at, now),
+  } satisfies SubscriptionStatusUpdate;
+}
+
 export async function listSubscribers(options: ListSubscribersOptions = {}) {
   // Prefer Supabase; keep deterministic dev fallback for local builds without DB wiring.
   const fromSupabase = await listSubscribersFromSupabase(options);
@@ -365,7 +467,11 @@ export async function listSubscribers(options: ListSubscribersOptions = {}) {
   const q = options.q?.trim().toLowerCase() ?? "";
 
   const rows = devSubscribersStore.map(toAdminSubscriber).filter((row) => {
-    if (q && !row.email.toLowerCase().includes(q)) return false;
+    if (q) {
+      const emailMatch = row.email.toLowerCase().includes(q);
+      const displayNameMatch = (row.display_name ?? "").toLowerCase().includes(q);
+      if (!emailMatch && !displayNameMatch) return false;
+    }
     if (options.status && row.subscription_status !== options.status) return false;
     if (typeof options.enterprise === "boolean" && row.enterprise_granted !== options.enterprise) {
       return false;
@@ -407,4 +513,20 @@ export async function revokeEnterpriseAccess(
   const fromSupabase = await updateEnterpriseGrantSupabase(userId, false, actorUserId, reason);
   if (fromSupabase) return fromSupabase;
   return updateEnterpriseGrantDev(userId, false);
+}
+
+export async function setSubscriptionStatus(
+  userId: string,
+  status: SubscriptionStatus,
+  reason?: string,
+  actorUserId?: string,
+) {
+  const fromSupabase = await updateSubscriptionStatusSupabase(
+    userId,
+    status,
+    actorUserId,
+    reason,
+  );
+  if (fromSupabase) return fromSupabase;
+  return updateSubscriptionStatusDev(userId, status);
 }

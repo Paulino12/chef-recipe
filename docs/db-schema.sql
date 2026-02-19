@@ -55,10 +55,14 @@ $$;
 create table if not exists public.user_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
+  display_name text,
   role public.app_role not null default 'subscriber',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table if exists public.user_profiles
+  add column if not exists display_name text;
 
 drop trigger if exists trg_user_profiles_updated_at on public.user_profiles;
 create trigger trg_user_profiles_updated_at
@@ -98,6 +102,17 @@ create trigger trg_user_entitlements_updated_at
 before update on public.user_entitlements
 for each row execute function public.touch_updated_at();
 
+-- Per-user saved recipes (works across public and enterprise browsing).
+create table if not exists public.user_recipe_favorites (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  recipe_id text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, recipe_id)
+);
+
+create index if not exists idx_user_recipe_favorites_recipe_id
+  on public.user_recipe_favorites (recipe_id);
+
 -- Audit trail for owner actions.
 create table if not exists public.audit_log (
   id bigserial primary key,
@@ -118,10 +133,13 @@ create index if not exists idx_audit_log_actor_created_at
   on public.audit_log (actor_user_id, created_at desc);
 
 -- Computed access view used by /api/me/access and admin list endpoints.
-create or replace view public.v_user_access as
+-- Drop/recreate so column order changes (e.g. adding display_name) are applied safely.
+drop view if exists public.v_user_access;
+create view public.v_user_access as
 select
   p.user_id,
   p.email,
+  p.display_name,
   p.role,
   s.status as subscription_status,
   coalesce(e.enterprise_granted, false) as enterprise_granted,
@@ -138,3 +156,59 @@ select
 from public.user_profiles p
 left join public.user_subscriptions s on s.user_id = p.user_id
 left join public.user_entitlements e on e.user_id = p.user_id;
+
+-- Auto-provision access rows for every new auth user.
+-- This guarantees "new subscriber starts with trialing public access".
+create or replace function public.bootstrap_new_user_access()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.user_profiles (user_id, email, role)
+  values (new.id, coalesce(new.email, format('user-%s@example.invalid', new.id)), 'subscriber')
+  on conflict (user_id) do nothing;
+
+  insert into public.user_subscriptions (user_id, status)
+  values (new.id, 'trialing')
+  on conflict (user_id) do nothing;
+
+  insert into public.user_entitlements (user_id, enterprise_granted)
+  values (new.id, false)
+  on conflict (user_id) do nothing;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_auth_users_bootstrap_access on auth.users;
+create trigger trg_auth_users_bootstrap_access
+after insert on auth.users
+for each row execute function public.bootstrap_new_user_access();
+
+-- Backfill existing auth users who are missing app access rows.
+insert into public.user_profiles (user_id, email, role)
+select
+  u.id,
+  coalesce(u.email, format('user-%s@example.invalid', u.id)),
+  'subscriber'::public.app_role
+from auth.users u
+left join public.user_profiles p on p.user_id = u.id
+where p.user_id is null;
+
+insert into public.user_subscriptions (user_id, status)
+select
+  u.id,
+  'trialing'::public.subscription_status
+from auth.users u
+left join public.user_subscriptions s on s.user_id = u.id
+where s.user_id is null;
+
+insert into public.user_entitlements (user_id, enterprise_granted)
+select
+  u.id,
+  false
+from auth.users u
+left join public.user_entitlements e on e.user_id = u.id
+where e.user_id is null;

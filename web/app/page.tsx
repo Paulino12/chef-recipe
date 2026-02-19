@@ -1,12 +1,12 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { listPublicRecipes } from "@/lib/recipes";
+import { getServerAccessSession } from "@/lib/api/serverSession";
 
 export default async function HomePage() {
-  // Hero stats only; recipe listing now lives on /recipes.
-  const stats = await listPublicRecipes("", { page: 1, pageSize: 10 });
+  // Landing stays public while sign-in gates recipes/profile management routes.
+  const session = await getServerAccessSession();
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6">
@@ -20,36 +20,43 @@ export default async function HomePage() {
             <Badge variant="outline">Web + Mobile Access</Badge>
           </div>
 
-          <div className="max-w-3xl space-y-4">
+          <div className="max-w-full space-y-4">
             <h1 className="text-4xl font-semibold leading-tight sm:text-5xl md:text-6xl">
-              Recipe operations in one place.
+              Welcome to your recipetheque
             </h1>
             <p className="text-base text-muted-foreground sm:text-lg">
-              Discover recipes as a subscriber and manage visibility and subscriber access as an owner.
+              Access thousands of Chefs crafted recipes all in one place.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Link href="/recipes" className={buttonVariants({ variant: "default" })}>
-              Explore all recipes
-            </Link>
-          </div>
 
-          <div className="grid gap-3 pt-2 sm:grid-cols-3">
-            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Public Library</p>
-              <p className="mt-1 text-2xl font-semibold">{stats.total}</p>
-              <p className="mt-1 text-xs text-muted-foreground">recipes available</p>
+
+          <div id="pricing" className="rounded-2xl border border-border/70 bg-background/75 p-5 sm:p-6">
+            <div className="mb-3 flex items-center gap-2">
+              <Badge variant="secondary">Pricing</Badge>
+              <Badge variant="outline">Public Recipes</Badge>
             </div>
-            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Owner Controls</p>
-              <p className="mt-1 text-2xl font-semibold">Visibility</p>
-              <p className="mt-1 text-xs text-muted-foreground">recipe audiences and access rules</p>
-            </div>
-            <div className="rounded-xl border border-border/70 bg-background/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Subscriber Access</p>
-              <p className="mt-1 text-2xl font-semibold">Enterprise</p>
-              <p className="mt-1 text-xs text-muted-foreground">grant and revoke from owner dashboard</p>
+            <h2 className="text-2xl font-semibold sm:text-3xl">
+              GBP 4.95 / month after a 3-day free trial
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
+              Includes access to public recipes. Cancel anytime, including during trial.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {session ? (
+                <>
+                  <Link href="/profile" className={buttonVariants({ variant: "default" })}>
+                    Manage plan in profile
+                  </Link>
+                  <Link href="/recipes" className={buttonVariants({ variant: "outline" })}>
+                    Browse recipes
+                  </Link>
+                </>
+              ) : (
+                <Link href="/signup" className={buttonVariants({ variant: "default" })}>
+                  Start a free trial
+                </Link>
+              )}
             </div>
           </div>
         </div>

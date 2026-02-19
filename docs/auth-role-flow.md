@@ -33,6 +33,8 @@ This document explains the current end-to-end flow for authentication, role chec
   - redirects to `/`
 - Header links are persistent across pages:
   - `All recipes` (`/recipes`) - sign-in required
+  - `Profile` (`/profile`) - visible when signed in (includes billing controls)
+  - `Pricing` anchor on landing (`/#pricing`) - visible when signed out
   - `Owner area` (`/owner`) - visible to `owner` role only
   - `Subscribers` (`/owner/subscribers`, visible to owners)
 
@@ -101,6 +103,16 @@ Data layer:
 Recipes web pages:
 - `/recipes` requires sign-in.
 - `/recipes/[id]` requires sign-in.
+- `/recipes` supports audience filters (`public`, `enterprise`, `all`) based on computed entitlements.
+- Default signed-in recipe mode starts on `public`; enterprise/all can be selected if available.
+- `/profile` is the subscriber management page for display name + password reset + billing actions.
+- Favorites:
+  - Star toggle is available on recipe cards and recipe detail.
+  - Favorites-only mode is enabled via `/recipes?...&favorites=1`.
+  - Persistence path is dual-write:
+    - primary table `public.user_recipe_favorites`
+    - fallback cookie `recipe_favorites`
+  - This keeps favorites functional even if DB migration is pending.
 
 User recipe feed API endpoint:
 - `web/app/api/recipes/route.ts`

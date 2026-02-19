@@ -1,87 +1,50 @@
-# Recipes Platform iOS App
+﻿# Recipes Platform iOS App
 
-This folder contains an Expo + React Native app focused on one goal:
-show recipes by audience (`public` or `enterprise`) based on visibility you control in the web owner dashboard.
+Expo + React Native app for subscriber recipe access.
 
-Authentication/subscription is intentionally not implemented yet.
+## What is implemented now
 
-## 1) What this app does
+- In-app sign in and sign up (Supabase email/password)
+- Access session fetch from web API (`GET /api/me/access`)
+- In-app profile screen (`display_name`, email view, password reset email trigger)
+- RevenueCat purchase + restore controls from profile (iOS)
+- Recipe feed access is gated by entitlements:
+  - `can_view_public`
+  - `can_view_enterprise`
+- Signed-in users can refresh entitlements and sign out
+- Recipe list and detail require authenticated API calls (Bearer token)
 
-- Loads recipes from the existing web API.
-- Lets the user switch between `Public` and `Enterprise` audience.
-- Shows only recipes whose visibility for that audience is `true`.
-- Opens a detailed recipe view with ingredients, method, allergens, and visibility metadata.
+## Current subscription behavior
 
-## 2) How owner dashboard control flows into mobile
+This app now reflects backend subscription/entitlement state.
+It does **not** process Apple in-app purchases yet.
 
-1. In web owner dashboard, you toggle recipe visibility (public/enterprise).
-2. Web app updates Sanity `recipe.visibility.public` and `recipe.visibility.enterprise`.
-3. Mobile calls:
-   - `GET /api/recipes?audience=public|enterprise&q=...`
-   - `GET /api/recipes/:id?audience=public|enterprise`
-4. These endpoints only return recipes where `visibility.<audience> == true`.
-5. Result: your web dashboard controls exactly what appears in the mobile app.
+Practical meaning:
+- If subscription status is `trialing` or `active`, public recipes are available.
+- If owner granted enterprise access, enterprise recipes are available.
+- If neither is available, app shows a subscription-required state and lets user refresh access.
 
-## 3) Project structure
+## Environment setup
 
-```txt
-mobile/
-  App.tsx
-  src/
-    components/
-      AudienceSelector.tsx
-      RecipeCard.tsx
-      RecipeDetailModal.tsx
-      SectionCard.tsx
-      StatePanel.tsx
-    config/
-      env.ts
-    hooks/
-      useDebouncedValue.ts
-      useRecipeDetail.ts
-      useRecipes.ts
-    lib/
-      formatters.ts
-      http.ts
-      recipeMapper.ts
-    screens/
-      RecipeExplorerScreen.tsx
-    services/
-      recipesApi.ts
-    theme/
-      tokens.ts
-    types/
-      recipe.ts
-```
-
-## 4) Architecture notes (learning-friendly)
-
-- `types/`: domain models for compile-time safety.
-- `services/`: API access only (no UI logic).
-- `lib/`: pure helpers (mapping, formatting, HTTP).
-- `hooks/`: async orchestration and state.
-- `components/`: reusable UI blocks.
-- `screens/`: page-level composition.
-
-This split keeps code DRY:
-- parsing/mapping happens once (`recipeMapper.ts`)
-- API details stay in one place (`recipesApi.ts`)
-- UI stays focused on rendering.
-
-## 5) Environment setup
-
-Copy `.env.example` to `.env` and set values:
+Create `mobile/.env` from `.env.example`:
 
 ```env
 EXPO_PUBLIC_API_BASE_URL=http://localhost:3000
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+# RevenueCat iOS setup
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=
+EXPO_PUBLIC_REVENUECAT_PUBLIC_ENTITLEMENT_ID=
+# optional for legacy enterprise-key API setups
 EXPO_PUBLIC_ENTERPRISE_API_KEY=
 ```
 
 Notes:
-- `EXPO_PUBLIC_API_BASE_URL` should point to the running web app.
-- `EXPO_PUBLIC_ENTERPRISE_API_KEY` is optional. Use it only if you want enterprise feed access through current API gate.
+- `EXPO_PUBLIC_API_BASE_URL` must point to your running web app.
+- On a physical iPhone, use a LAN URL reachable from the phone.
+- RevenueCat requires a development build (not plain Expo Go).
 
-## 6) Run locally
+## Run
 
 ```bash
 cd mobile
@@ -89,12 +52,23 @@ npm install
 npm run ios
 ```
 
-If you use a physical iPhone, make sure the API base URL is reachable from the phone network.
+## Code map
 
-## 7) Next improvements (when ready)
+```txt
+mobile/src/
+  config/env.ts              # runtime env values
+  services/authApi.ts        # Supabase sign in/sign up
+  services/accessApi.ts      # /api/me/access client
+  services/profileApi.ts     # /api/me/profile + password reset client
+  services/revenueCat.ts     # iOS purchase/restore helpers
+  services/recipesApi.ts     # authenticated recipe API calls
+  hooks/useAuthSession.ts    # auth + access orchestration
+  hooks/useRecipes.ts        # recipe list loading
+  hooks/useRecipeDetail.ts   # recipe detail loading
+  screens/ProfileScreen.tsx
+  screens/RecipeExplorerScreen.tsx
+```
 
-- Real auth and audience assignment from backend identity (instead of local audience toggle).
-- Subscription/paywall flow.
-- Offline cache (e.g. persistent query cache).
-- Favorite/save recipes.
-- Pagination and richer filters.
+## Billing server dependency
+
+The web app must expose `POST /api/billing/revenuecat/webhook` and process RevenueCat events to update `user_subscriptions.status`.

@@ -11,6 +11,7 @@ export type AdminRecipesResult = {
   page: number;
   pageSize: AdminPageSize;
   totalPages: number;
+  categories: AdminCategoryOption[];
 };
 
 export type AdminRecipeRow = {
@@ -25,11 +26,17 @@ export type AdminRecipeRow = {
   };
 };
 
+export type AdminCategoryOption = {
+  name: string;
+  count: number;
+};
+
 const ADMIN_RECIPES_COUNT_QUERY = `
   count(
     *[
       _type == "recipe" &&
       !(_id in path("drafts.**")) &&
+      (!defined($category) || $category in categoryPath) &&
       (!defined($q) || title match $q)
     ]
   )
@@ -39,6 +46,7 @@ const ADMIN_RECIPES_ITEMS_QUERY = `
   *[
     _type == "recipe" &&
     !(_id in path("drafts.**")) &&
+    (!defined($category) || $category in categoryPath) &&
     (!defined($q) || title match $q)
   ] | order(title asc, _id asc)[$start...$end] {
     "id": _id,
@@ -47,6 +55,17 @@ const ADMIN_RECIPES_ITEMS_QUERY = `
     categoryPath,
     portions,
     visibility
+  }
+`;
+
+const ADMIN_RECIPE_CATEGORIES_QUERY = `
+  *[
+    _type == "recipe" &&
+    !(_id in path("drafts.**")) &&
+    defined(categoryPath[0]) &&
+    string(categoryPath[0]) != ""
+  ]{
+    "category": categoryPath[0]
   }
 `;
 
@@ -60,20 +79,40 @@ function normalizePageSize(value: number | undefined): AdminPageSize {
   return 10;
 }
 
+function normalizeCategory(value?: string) {
+  const category = value?.trim();
+  return category ? category : null;
+}
+
+export async function listAdminCategories() {
+  const rows = await sanityServer.fetch<Array<{ category?: string }>>(ADMIN_RECIPE_CATEGORIES_QUERY);
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const category = row.category?.trim();
+    if (!category) continue;
+    counts.set(category, (counts.get(category) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function listAdminRecipes(
   query?: string,
-  options?: { page?: number; pageSize?: number },
+  options?: { page?: number; pageSize?: number; category?: string },
 ): Promise<AdminRecipesResult> {
   const q = query?.trim();
+  const category = normalizeCategory(options?.category);
   const page = normalizePage(options?.page);
   const pageSize = normalizePageSize(options?.pageSize);
-  const params = { q: q ? `*${q}*` : null };
+  const params = { q: q ? `*${q}*` : null, category };
   const totalRaw = await sanityServer.fetch<number>(ADMIN_RECIPES_COUNT_QUERY, params);
   const total = Number.isFinite(totalRaw) ? Math.max(0, Number(totalRaw)) : 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const resolvedPage = Math.min(page, totalPages);
   const start = (resolvedPage - 1) * pageSize;
   const end = start + pageSize;
+  const categories = await listAdminCategories();
   const items = await sanityServer.fetch<AdminRecipeRow[]>(ADMIN_RECIPES_ITEMS_QUERY, {
     ...params,
     start,
@@ -86,6 +125,7 @@ export async function listAdminRecipes(
     page: resolvedPage,
     pageSize,
     totalPages,
+    categories,
   };
 }
 

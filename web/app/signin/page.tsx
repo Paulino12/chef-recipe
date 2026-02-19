@@ -127,6 +127,9 @@ export default function SignInPage() {
               <Button type="submit" disabled={loading}>
                 {loading ? "Signing in..." : "Sign in"}
               </Button>
+              <Link href="/signup" className="inline-flex items-center text-sm underline-offset-4 hover:underline">
+                Create account
+              </Link>
               <Link href="/" className="inline-flex items-center text-sm underline-offset-4 hover:underline">
                 Back to home
               </Link>

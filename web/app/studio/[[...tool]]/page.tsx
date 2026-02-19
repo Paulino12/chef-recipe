@@ -1,19 +1,34 @@
-/**
- * This route is responsible for the built-in authoring environment using Sanity Studio.
- * All routes under your studio path is handled by this file using Next.js' catch-all routes:
- * https://nextjs.org/docs/routing/dynamic-routes#catch-all-routes
- *
- * You can learn more about the next-sanity package here:
- * https://github.com/sanity-io/next-sanity
- */
+﻿import Link from "next/link";
 
-import { NextStudio } from 'next-sanity/studio'
-import config from '../../../sanity.config'
+import { buttonVariants } from "@/components/ui/button";
 
-export const dynamic = 'force-static'
-
-export { metadata, viewport } from 'next-sanity/studio'
+export const dynamic = "force-static";
 
 export default function StudioPage() {
-  return <NextStudio config={config} />
+  const studioUrl = process.env.NEXT_PUBLIC_STUDIO_URL?.trim() || "http://localhost:3333";
+  const studioLabel = studioUrl.replace(/^https?:\/\//, "");
+
+  return (
+    <main className="mx-auto max-w-2xl px-4 pb-16 pt-10 sm:px-6">
+      <section className="surface-panel rounded-2xl border border-white/40 p-6 sm:p-8">
+        <h1 className="text-2xl font-semibold">Embedded Studio is disabled</h1>
+        <p className="mt-3 text-sm text-muted-foreground sm:text-base">
+          Use the standalone Sanity Studio instead.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <a
+            href={studioUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ variant: "default" })}
+          >
+            Open Studio ({studioLabel})
+          </a>
+          <Link href="/" className={buttonVariants({ variant: "outline" })}>
+            Back to app
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
 }

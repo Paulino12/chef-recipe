@@ -1,8 +1,8 @@
-/**
- * Schema type registry.
- * If imports here are wrong/missing, Studio won’t boot.
- */
+import type { SchemaTypeDefinition } from "sanity";
+
 import { ingredientLine } from "./ingredientLine";
 import { recipe } from "./recipe";
 
-export const schemaTypes = [recipe, ingredientLine];
+export const schema: { types: SchemaTypeDefinition[] } = {
+  types: [recipe, ingredientLine],
+};

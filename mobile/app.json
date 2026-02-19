@@ -20,7 +20,8 @@
       "**/*"
     ],
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "react-native-purchases"
     ],
     "extra": {
       "eas": {

@@ -7,13 +7,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { getInternalApiOrigin } from "@/lib/api/origin";
 import { getForwardAuthHeaders, getServerAccessSession } from "@/lib/api/serverSession";
+import {
+  buildHrefWithQuery,
+  parseBoundedPageSize,
+  parsePageNumber,
+  pickFirstQueryParam,
+} from "@/lib/searchParams";
 import { cn } from "@/lib/utils";
 
-import { grantEnterpriseAction, revokeEnterpriseAction } from "./actions";
+import {
+  grantEnterpriseAction,
+  revokeEnterpriseAction,
+  setSubscriptionStatusAction,
+} from "./actions";
 
 type SubscriberItem = {
   user_id: string;
   email: string;
+  display_name: string | null;
   subscription_status: "trialing" | "active" | "past_due" | "canceled" | "expired";
   enterprise_granted: boolean;
   can_view_public: boolean;
@@ -40,25 +51,6 @@ type SearchParams = {
 
 const VALID_STATUSES = new Set(["trialing", "active", "past_due", "canceled", "expired"] as const);
 
-function pickFirst(value?: string | string[]) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function parsePage(value?: string) {
-  const parsed = Number(value ?? "1");
-  if (!Number.isFinite(parsed)) return 1;
-  const integer = Math.floor(parsed);
-  return integer > 0 ? integer : 1;
-}
-
-function parsePageSize(value?: string) {
-  const parsed = Number(value ?? "25");
-  if (!Number.isFinite(parsed)) return 25;
-  const integer = Math.floor(parsed);
-  if (integer <= 0) return 25;
-  return integer > 100 ? 100 : integer;
-}
-
 function parseStatus(value?: string) {
   if (!value) return "";
   return VALID_STATUSES.has(value as (typeof VALID_STATUSES extends Set<infer T> ? T : never))
@@ -78,13 +70,19 @@ function buildHref(params: {
   page: number;
   pageSize: number;
 }) {
-  const next = new URLSearchParams();
-  if (params.q) next.set("q", params.q);
-  if (params.status) next.set("status", params.status);
-  if (params.enterprise) next.set("enterprise", params.enterprise);
-  next.set("page", String(params.page));
-  next.set("pageSize", String(params.pageSize));
-  return `/owner/subscribers?${next.toString()}`;
+  return buildHrefWithQuery("/owner/subscribers", {
+    q: params.q,
+    status: params.status,
+    enterprise: params.enterprise,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+}
+
+function formatUpdatedAtUtc(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "unknown";
+  return parsed.toISOString().replace("T", " ").slice(0, 16) + " UTC";
 }
 
 async function loadSubscribers(
@@ -144,11 +142,11 @@ export default async function OwnerSubscribersPage({
   const authHeaders = await getForwardAuthHeaders();
 
   const sp = await searchParams;
-  const q = (pickFirst(sp.q) ?? "").trim();
-  const status = parseStatus((pickFirst(sp.status) ?? "").trim());
-  const enterprise = parseEnterprise((pickFirst(sp.enterprise) ?? "").trim());
-  const page = parsePage(pickFirst(sp.page));
-  const pageSize = parsePageSize(pickFirst(sp.pageSize));
+  const q = (pickFirstQueryParam(sp.q) ?? "").trim();
+  const status = parseStatus((pickFirstQueryParam(sp.status) ?? "").trim());
+  const enterprise = parseEnterprise((pickFirstQueryParam(sp.enterprise) ?? "").trim());
+  const page = parsePageNumber(pickFirstQueryParam(sp.page));
+  const pageSize = parseBoundedPageSize(pickFirstQueryParam(sp.pageSize), { fallback: 25, min: 1, max: 100 });
 
   const data = await loadSubscribers({ q, status, enterprise, page, pageSize }, authHeaders);
 
@@ -177,13 +175,13 @@ export default async function OwnerSubscribersPage({
               <div className="grid gap-3 md:grid-cols-[1fr_auto_auto_auto] md:items-end">
                 <div>
                   <label className="mb-2 block text-sm font-medium" htmlFor="q">
-                    Search by email
+                    Search by name or email
                   </label>
                   <Input
                     id="q"
                     name="q"
                     defaultValue={q}
-                    placeholder="e.g. alice@example.com"
+                    placeholder="e.g. Alice or alice@example.com"
                     className="bg-background/80"
                   />
                 </div>
@@ -270,11 +268,32 @@ export default async function OwnerSubscribersPage({
               {data.items.map((item) => (
                 <tr key={item.user_id} className="border-t align-top">
                   <td className="px-4 py-3">
-                    <p className="font-medium">{item.email}</p>
+                    <p className="font-medium">{item.display_name?.trim() || item.email}</p>
+                    <p className="text-xs text-muted-foreground">{item.email}</p>
                     <p className="text-xs text-muted-foreground">ID {item.user_id}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="outline">{item.subscription_status}</Badge>
+                    <div className="space-y-2">
+                      <Badge variant="outline">{item.subscription_status}</Badge>
+                      <form action={setSubscriptionStatusAction} className="flex items-center gap-2">
+                        <input type="hidden" name="userId" value={item.user_id} />
+                        <input type="hidden" name="reason" value="Owner dashboard set status" />
+                        <select
+                          name="status"
+                          defaultValue={item.subscription_status}
+                          className="h-8 rounded-md border border-input bg-background/80 px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <option value="trialing">trialing</option>
+                          <option value="active">active</option>
+                          <option value="past_due">past_due</option>
+                          <option value="canceled">canceled</option>
+                          <option value="expired">expired</option>
+                        </select>
+                        <Button type="submit" size="sm" variant="outline">
+                          Set
+                        </Button>
+                      </form>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={item.can_view_public ? "secondary" : "outline"}>
@@ -313,7 +332,7 @@ export default async function OwnerSubscribersPage({
                       </form>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Updated {new Date(item.updated_at).toLocaleString()}
+                      Updated {formatUpdatedAtUtc(item.updated_at)}
                     </p>
                   </td>
                 </tr>
@@ -381,5 +400,3 @@ export default async function OwnerSubscribersPage({
     </main>
   );
 }
-
-

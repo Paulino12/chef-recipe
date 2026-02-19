@@ -9,13 +9,25 @@ type UseRecipesState = {
   reload: () => void;
 };
 
-export function useRecipes(audience: Audience, query: string): UseRecipesState {
+export function useRecipes(
+  audience: Audience,
+  query: string,
+  accessToken: string | null,
+  enabled = true,
+): UseRecipesState {
   const [data, setData] = useState<RecipeListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
+    if (!enabled || !accessToken) {
+      setData([]);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
     let active = true;
 
@@ -23,7 +35,7 @@ export function useRecipes(audience: Audience, query: string): UseRecipesState {
     setIsLoading(true);
     setError(null);
 
-    fetchRecipes(audience, query, controller.signal)
+    fetchRecipes(audience, query, accessToken, controller.signal)
       .then((recipes) => {
         if (!active) return;
         setData(recipes);
@@ -43,7 +55,7 @@ export function useRecipes(audience: Audience, query: string): UseRecipesState {
       active = false;
       controller.abort();
     };
-  }, [audience, query, refreshToken]);
+  }, [audience, query, refreshToken, accessToken, enabled]);
 
   const reload = useCallback(() => {
     setRefreshToken((token) => token + 1);

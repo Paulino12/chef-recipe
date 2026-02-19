@@ -1,4 +1,5 @@
 import { createClient } from "@sanity/client";
+import { apiVersion, dataset, projectId } from "@/sanity/env";
 
 function normalizeToken(token: string | undefined) {
   const value = token?.trim();
@@ -34,18 +35,49 @@ const writeTokenCandidates = [
 
 function createSanityClient(token: string | undefined) {
   return createClient({
-    projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
-    dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
-    apiVersion: process.env.NEXT_PUBLIC_SANITY_API_VERSION!,
+    projectId,
+    dataset,
+    apiVersion,
     useCdn: false,
     token,
   });
 }
 
+function isProjectHostMismatchError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  return error.message.toLowerCase().includes("session does not match project host");
+}
+
+const sanityServerPublic = createSanityClient(undefined);
+const sanityServerWithToken = createSanityClient(readToken);
+
 /**
  * Server-only Sanity client for reads.
  */
-export const sanityServer = createSanityClient(readToken);
+export const sanityServer = {
+  async fetch<T = unknown>(query: string, params?: unknown) {
+    if (!readToken) {
+      return params === undefined
+        ? sanityServerPublic.fetch<T>(query)
+        : sanityServerPublic.fetch<T>(query, params as never);
+    }
+
+    try {
+      return params === undefined
+        ? await sanityServerWithToken.fetch<T>(query)
+        : await sanityServerWithToken.fetch<T>(query, params as never);
+    } catch (error) {
+      // Common when projectId is switched but old token remains in .env.local.
+      // For published-content reads, gracefully fall back to tokenless client.
+      if (isProjectHostMismatchError(error)) {
+        return params === undefined
+          ? sanityServerPublic.fetch<T>(query)
+          : sanityServerPublic.fetch<T>(query, params as never);
+      }
+      throw error;
+    }
+  },
+};
 
 /**
  * Server-only Sanity client for writes.

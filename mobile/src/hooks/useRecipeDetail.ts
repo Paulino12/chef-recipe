@@ -11,13 +11,15 @@ type UseRecipeDetailState = {
 export function useRecipeDetail(
   recipeId: string | null,
   audience: Audience,
+  accessToken: string | null,
+  enabled = true,
 ): UseRecipeDetailState {
   const [data, setData] = useState<RecipeDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!recipeId) {
+    if (!recipeId || !accessToken || !enabled) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -30,7 +32,7 @@ export function useRecipeDetail(
     setIsLoading(true);
     setError(null);
 
-    fetchRecipeById(recipeId, audience, controller.signal)
+    fetchRecipeById(recipeId, audience, accessToken, controller.signal)
       .then((recipe) => {
         if (!active) return;
         setData(recipe);
@@ -50,7 +52,7 @@ export function useRecipeDetail(
       active = false;
       controller.abort();
     };
-  }, [recipeId, audience]);
+  }, [recipeId, audience, accessToken, enabled]);
 
   return useMemo(() => ({ data, isLoading, error }), [data, isLoading, error]);
 }

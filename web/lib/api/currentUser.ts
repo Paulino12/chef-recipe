@@ -3,6 +3,8 @@ import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 import { AppRole, SubscriptionStatus } from "@/lib/api/access";
+import { Database } from "@/lib/api/supabaseDatabase";
+import { createSupabaseAdminClient, ensureUserAccessRows } from "@/lib/api/supabaseAdmin";
 
 /**
  * Canonical "who is this request acting as?" resolver used by API routes.
@@ -13,6 +15,7 @@ import { AppRole, SubscriptionStatus } from "@/lib/api/access";
 export type CurrentUser = {
   id: string;
   email: string;
+  displayName: string | null;
   role: AppRole;
   subscriptionStatus: SubscriptionStatus | null;
   enterpriseGranted: boolean;
@@ -80,6 +83,7 @@ function getBearerToken(req: NextRequest) {
 
 type ProfileRow = {
   email: string | null;
+  display_name: string | null;
   role: string | null;
 };
 
@@ -91,6 +95,39 @@ type EntitlementRow = {
   enterprise_granted: boolean | null;
 };
 
+type UserRows = {
+  profile: ProfileRow | null;
+  subscription: SubscriptionRow | null;
+  entitlement: EntitlementRow | null;
+};
+
+type SupabaseReadClient = ReturnType<typeof createClient<Database>>;
+
+async function loadUserRows(
+  dbClient: SupabaseReadClient,
+  userId: string,
+): Promise<UserRows> {
+  const [profileResult, subscriptionResult, entitlementResult] = await Promise.all([
+    dbClient
+      .from("user_profiles")
+      .select("email,display_name,role")
+      .eq("user_id", userId)
+      .maybeSingle<ProfileRow>(),
+    dbClient.from("user_subscriptions").select("status").eq("user_id", userId).maybeSingle<SubscriptionRow>(),
+    dbClient
+      .from("user_entitlements")
+      .select("enterprise_granted")
+      .eq("user_id", userId)
+      .maybeSingle<EntitlementRow>(),
+  ]);
+
+  return {
+    profile: profileResult.error ? null : (profileResult.data ?? null),
+    subscription: subscriptionResult.error ? null : (subscriptionResult.data ?? null),
+    entitlement: entitlementResult.error ? null : (entitlementResult.data ?? null),
+  };
+}
+
 async function getCurrentUserFromSupabase(req: NextRequest): Promise<CurrentUser | null> {
   const supabaseEnv = getSupabaseEnv();
   if (!supabaseEnv) return null;
@@ -98,7 +135,7 @@ async function getCurrentUserFromSupabase(req: NextRequest): Promise<CurrentUser
   const token = getBearerToken(req);
   if (!token) return null;
 
-  const supabase = createClient(supabaseEnv.url, supabaseEnv.anonKey, {
+  const supabase = createClient<Database>(supabaseEnv.url, supabaseEnv.anonKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -111,34 +148,29 @@ async function getCurrentUserFromSupabase(req: NextRequest): Promise<CurrentUser
   const user = userResult.data.user;
   const userId = user.id;
   const userEmail = user.email?.trim() || "";
+  const supabaseAdmin = createSupabaseAdminClient();
+  const readClient = supabaseAdmin ?? supabase;
 
-  // Read app-specific role/subscription/entitlement rows from our public schema.
-  const profileResult = await supabase
-    .from("user_profiles")
-    .select("email,role")
-    .eq("user_id", userId)
-    .maybeSingle<ProfileRow>();
+  // Ensure newly signed-up users get deterministic default access rows.
+  // This keeps subscriber onboarding aligned with the access matrix.
+  let rows = await loadUserRows(readClient, userId);
+  const hasAllRows = Boolean(rows.profile && rows.subscription && rows.entitlement);
+  if (supabaseAdmin && !hasAllRows) {
+    await ensureUserAccessRows(supabaseAdmin, { userId, email: userEmail });
+    rows = await loadUserRows(supabaseAdmin, userId);
+  }
 
-  const subscriptionResult = await supabase
-    .from("user_subscriptions")
-    .select("status")
-    .eq("user_id", userId)
-    .maybeSingle<SubscriptionRow>();
-
-  const entitlementResult = await supabase
-    .from("user_entitlements")
-    .select("enterprise_granted")
-    .eq("user_id", userId)
-    .maybeSingle<EntitlementRow>();
-
-  const profile = profileResult.data ?? null;
+  const profile = rows.profile;
   const role =
     parseRole(profile?.role) ||
     parseRole(typeof user.user_metadata?.role === "string" ? user.user_metadata.role : null) ||
     "subscriber";
+  const displayName = profile?.display_name?.trim() || null;
 
-  const subscriptionStatus = parseSubscriptionStatus(subscriptionResult.data?.status ?? null);
-  const enterpriseGranted = Boolean(entitlementResult.data?.enterprise_granted);
+  const subscriptionStatus =
+    parseSubscriptionStatus(rows.subscription?.status ?? null) ||
+    (role === "subscriber" ? "trialing" : null);
+  const enterpriseGranted = Boolean(rows.entitlement?.enterprise_granted);
 
   const email = profile?.email?.trim() || userEmail;
   if (!email) return null;
@@ -146,6 +178,7 @@ async function getCurrentUserFromSupabase(req: NextRequest): Promise<CurrentUser
   return {
     id: userId,
     email,
+    displayName,
     role,
     subscriptionStatus,
     enterpriseGranted,
@@ -174,6 +207,7 @@ function getCurrentUserFromDev(req: NextRequest): CurrentUser | null {
   return {
     id,
     email,
+    displayName: null,
     role,
     subscriptionStatus,
     enterpriseGranted,

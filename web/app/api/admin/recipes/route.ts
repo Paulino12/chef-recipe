@@ -21,11 +21,12 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
+  const category = (searchParams.get("category") ?? "").trim();
   const page = Number(searchParams.get("page") ?? "1");
   const pageSize = Number(searchParams.get("pageSize") ?? "10");
 
   try {
-    const recipes = await listAdminRecipes(q, { page, pageSize });
+    const recipes = await listAdminRecipes(q, { page, pageSize, category });
     return NextResponse.json(recipes);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load recipes";

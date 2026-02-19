@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSyncExternalStore } from "react";
 
 import { signOutAction } from "@/app/actions/auth";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/utils";
 type HeaderSession = {
   email: string;
   role: "owner" | "subscriber";
+  display_name: string;
 } | null;
 
 type SiteHeaderProps = {
@@ -25,11 +27,25 @@ function isOwnerDashboardRoute(pathname: string) {
 }
 
 function isSubscribersRoute(pathname: string) {
-  return pathname === "/owner/subscribers" || pathname.startsWith("/owner/subscribers/");
+  return (
+    pathname === "/owner/subscribers" ||
+    pathname.startsWith("/owner/subscribers/")
+  );
+}
+
+function isBillingRoute(pathname: string) {
+  return pathname === "/billing" || pathname.startsWith("/billing/");
+}
+
+function isProfileRoute(pathname: string) {
+  return pathname === "/profile" || pathname.startsWith("/profile/");
 }
 
 function navClass(isActive: boolean) {
-  return buttonVariants({ variant: isActive ? "secondary" : "ghost", size: "sm" });
+  return buttonVariants({
+    variant: isActive ? "secondary" : "ghost",
+    size: "sm",
+  });
 }
 
 /**
@@ -38,6 +54,14 @@ function navClass(isActive: boolean) {
 export function SiteHeader({ session }: SiteHeaderProps) {
   const pathname = usePathname();
   const isOwner = session?.role === "owner";
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
+  // Keep first client render identical to server HTML to avoid hydration mismatches.
+  const currentPathname = hydrated ? pathname : "";
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur">
@@ -48,29 +72,51 @@ export function SiteHeader({ session }: SiteHeaderProps) {
           </Link>
           {session ? (
             <span className="hidden rounded-full border border-border/70 bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground md:inline-flex">
-              {session.email}
+              Hey, {session.display_name || session.email}
             </span>
           ) : null}
         </div>
 
         <nav className="flex flex-wrap items-center gap-2">
-          <Link href="/recipes" className={navClass(isRecipesRoute(pathname))}>
+          <Link href="/recipes" className={navClass(isRecipesRoute(currentPathname))}>
             All recipes
           </Link>
+
           {isOwner ? (
-            <Link href="/owner" className={navClass(isOwnerDashboardRoute(pathname))}>
+            <Link
+              href="/owner"
+              className={navClass(isOwnerDashboardRoute(currentPathname))}
+            >
               Owner area
             </Link>
           ) : null}
           {isOwner ? (
-            <Link href="/owner/subscribers" className={navClass(isSubscribersRoute(pathname))}>
+            <Link
+              href="/owner/subscribers"
+              className={navClass(isSubscribersRoute(currentPathname))}
+            >
               Subscribers
+            </Link>
+          ) : null}
+          {session ? (
+            <Link
+              href="/profile"
+              className={navClass(
+                isProfileRoute(currentPathname) || isBillingRoute(currentPathname),
+              )}
+            >
+              Profile
             </Link>
           ) : null}
 
           {session ? (
             <form action={signOutAction}>
-              <Button type="submit" size="sm" variant="outline" className="cursor-pointer">
+              <Button
+                type="submit"
+                size="sm"
+                variant="outline"
+                className="cursor-pointer"
+              >
                 Sign out
               </Button>
             </form>
@@ -79,7 +125,10 @@ export function SiteHeader({ session }: SiteHeaderProps) {
               href="/signin"
               className={cn(
                 buttonVariants({
-                  variant: pathname === "/signin" ? "secondary" : "default",
+                  variant:
+                    currentPathname === "/signin" || currentPathname === "/signup"
+                      ? "secondary"
+                      : "default",
                   size: "sm",
                 }),
                 "min-w-20",

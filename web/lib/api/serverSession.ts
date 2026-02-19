@@ -7,6 +7,7 @@ export type AccessSession = {
   user: {
     id: string;
     email: string;
+    display_name: string | null;
     role: AppRole;
   };
   entitlements: {

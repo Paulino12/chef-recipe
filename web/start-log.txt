@@ -1,0 +1,10 @@
+
+> web@0.1.0 start
+> next start -p 3111
+
+▲ Next.js 16.1.6
+- Local:         http://localhost:3111
+- Network:       http://192.168.88.3:3111
+
+✓ Starting...
+✓ Ready in 665ms

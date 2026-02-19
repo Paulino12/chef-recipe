@@ -109,6 +109,40 @@ export const recipe = defineType({
           title: "Portion net weight (g)",
           type: "number",
         }),
+        defineField({
+          name: "perServing",
+          title: "Per serving",
+          type: "object",
+          fields: [
+            defineField({ name: "energyKj", title: "Energy (kJ)", type: "number" }),
+            defineField({ name: "energyKcal", title: "Energy (kcal)", type: "number" }),
+            defineField({ name: "fatG", title: "Fat (g)", type: "number" }),
+            defineField({ name: "saturatesG", title: "Saturates (g)", type: "number" }),
+            defineField({ name: "sugarsG", title: "Sugars (g)", type: "number" }),
+            defineField({ name: "saltG", title: "Salt (g)", type: "number" }),
+          ],
+        }),
+        defineField({
+          name: "per100g",
+          title: "Per 100g",
+          type: "object",
+          fields: [
+            defineField({ name: "energyKj", title: "Energy (kJ)", type: "number" }),
+            defineField({ name: "energyKcal", title: "Energy (kcal)", type: "number" }),
+          ],
+        }),
+        defineField({
+          name: "riPercent",
+          title: "RI %",
+          type: "object",
+          fields: [
+            defineField({ name: "energy", title: "Energy (%)", type: "number" }),
+            defineField({ name: "fat", title: "Fat (%)", type: "number" }),
+            defineField({ name: "saturates", title: "Saturates (%)", type: "number" }),
+            defineField({ name: "sugars", title: "Sugars (%)", type: "number" }),
+            defineField({ name: "salt", title: "Salt (%)", type: "number" }),
+          ],
+        }),
       ],
     }),
 
