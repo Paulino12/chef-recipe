@@ -1,0 +1,421 @@
+[
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              },
+              {
+                "flag": "min",
+                "constraint": 0
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "pluNumber",
+        "type": "number",
+        "title": "PLU number"
+      },
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "of": [
+          {
+            "type": "string"
+          }
+        ],
+        "name": "categoryPath",
+        "type": "array",
+        "title": "Category path"
+      },
+      {
+        "name": "portions",
+        "type": "number"
+      },
+      {
+        "of": [
+          {
+            "type": "ingredientLine",
+            "title": "Ingredient line"
+          }
+        ],
+        "name": "ingredients",
+        "type": "array"
+      },
+      {
+        "of": [
+          {
+            "marks": {
+              "annotations": [
+                {
+                  "i18nTitleKey": "inputs.portable-text.annotation.link",
+                  "options": {
+                    "modal": {
+                      "type": "popover"
+                    }
+                  },
+                  "fields": [
+                    {
+                      "validation": [
+                        {
+                          "rules": [
+                            {
+                              "flag": "uri",
+                              "constraint": {
+                                "options": {
+                                  "scheme": [
+                                    "/^http$/",
+                                    "/^https$/",
+                                    "/^tel$/",
+                                    "/^mailto$/"
+                                  ],
+                                  "allowRelative": true,
+                                  "relativeOnly": false,
+                                  "allowCredentials": false
+                                }
+                              }
+                            }
+                          ],
+                          "level": "error"
+                        }
+                      ],
+                      "description": "A valid web, email, phone, or relative link.",
+                      "name": "href",
+                      "type": "url",
+                      "title": "Link"
+                    }
+                  ],
+                  "name": "link",
+                  "type": "object"
+                }
+              ],
+              "decorators": [
+                {
+                  "value": "strong",
+                  "title": "Strong"
+                },
+                {
+                  "value": "em",
+                  "title": "Italic"
+                },
+                {
+                  "value": "code",
+                  "title": "Code"
+                },
+                {
+                  "value": "underline",
+                  "title": "Underline"
+                },
+                {
+                  "value": "strike-through",
+                  "title": "Strike"
+                }
+              ]
+            },
+            "lists": [
+              {
+                "value": "number",
+                "title": "Number"
+              },
+              {
+                "value": "bullet",
+                "title": "Bullet"
+              }
+            ],
+            "styles": [
+              {
+                "value": "normal",
+                "title": "Normal"
+              },
+              {
+                "value": "h1",
+                "title": "Heading 1"
+              },
+              {
+                "value": "h2",
+                "title": "Heading 2"
+              },
+              {
+                "value": "h3",
+                "title": "Heading 3"
+              },
+              {
+                "value": "h4",
+                "title": "Heading 4"
+              },
+              {
+                "value": "h5",
+                "title": "Heading 5"
+              },
+              {
+                "value": "h6",
+                "title": "Heading 6"
+              },
+              {
+                "value": "blockquote",
+                "title": "Quote"
+              }
+            ],
+            "of": [],
+            "type": "block"
+          }
+        ],
+        "name": "method",
+        "type": "array"
+      },
+      {
+        "readOnly": true,
+        "name": "methodText",
+        "type": "text",
+        "title": "Method (plain)"
+      },
+      {
+        "fields": [
+          {
+            "name": "gluten",
+            "type": "string"
+          },
+          {
+            "name": "crustaceans",
+            "type": "string"
+          },
+          {
+            "name": "eggs",
+            "type": "string"
+          },
+          {
+            "name": "fish",
+            "type": "string"
+          },
+          {
+            "name": "peanuts",
+            "type": "string"
+          },
+          {
+            "name": "soya",
+            "type": "string"
+          },
+          {
+            "name": "milk",
+            "type": "string"
+          },
+          {
+            "name": "nuts",
+            "type": "string"
+          },
+          {
+            "name": "celery",
+            "type": "string"
+          },
+          {
+            "name": "mustard",
+            "type": "string"
+          },
+          {
+            "name": "sesame",
+            "type": "string"
+          },
+          {
+            "name": "sulphites",
+            "type": "string"
+          },
+          {
+            "name": "lupin",
+            "type": "string"
+          },
+          {
+            "name": "molluscs",
+            "type": "string"
+          }
+        ],
+        "name": "allergens",
+        "type": "object",
+        "title": "Allergens (UK14)"
+      },
+      {
+        "fields": [
+          {
+            "name": "portionNetWeightG",
+            "type": "number",
+            "title": "Portion net weight (g)"
+          },
+          {
+            "fields": [
+              {
+                "name": "energyKj",
+                "type": "number",
+                "title": "Energy (kJ)"
+              },
+              {
+                "name": "energyKcal",
+                "type": "number",
+                "title": "Energy (kcal)"
+              },
+              {
+                "name": "fatG",
+                "type": "number",
+                "title": "Fat (g)"
+              },
+              {
+                "name": "saturatesG",
+                "type": "number",
+                "title": "Saturates (g)"
+              },
+              {
+                "name": "sugarsG",
+                "type": "number",
+                "title": "Sugars (g)"
+              },
+              {
+                "name": "saltG",
+                "type": "number",
+                "title": "Salt (g)"
+              }
+            ],
+            "name": "perServing",
+            "type": "object",
+            "title": "Per serving"
+          },
+          {
+            "fields": [
+              {
+                "name": "energyKj",
+                "type": "number",
+                "title": "Energy (kJ)"
+              },
+              {
+                "name": "energyKcal",
+                "type": "number",
+                "title": "Energy (kcal)"
+              }
+            ],
+            "name": "per100g",
+            "type": "object",
+            "title": "Per 100g"
+          },
+          {
+            "fields": [
+              {
+                "name": "energy",
+                "type": "number",
+                "title": "Energy (%)"
+              },
+              {
+                "name": "fat",
+                "type": "number",
+                "title": "Fat (%)"
+              },
+              {
+                "name": "saturates",
+                "type": "number",
+                "title": "Saturates (%)"
+              },
+              {
+                "name": "sugars",
+                "type": "number",
+                "title": "Sugars (%)"
+              },
+              {
+                "name": "salt",
+                "type": "number",
+                "title": "Salt (%)"
+              }
+            ],
+            "name": "riPercent",
+            "type": "object",
+            "title": "RI %"
+          }
+        ],
+        "name": "nutrition",
+        "type": "object"
+      },
+      {
+        "description": "Choose where this recipe appears.",
+        "fields": [
+          {
+            "initialValue": false,
+            "description": "Visible to paying public subscribers (iOS).",
+            "name": "public",
+            "type": "boolean",
+            "title": "Public app"
+          },
+          {
+            "initialValue": false,
+            "description": "Visible to your chefs (iOS).",
+            "name": "enterprise",
+            "type": "boolean",
+            "title": "Enterprise app"
+          }
+        ],
+        "name": "visibility",
+        "type": "object",
+        "title": "Publishing"
+      },
+      {
+        "fields": [
+          {
+            "readOnly": true,
+            "name": "pdfPath",
+            "type": "string"
+          }
+        ],
+        "name": "source",
+        "type": "object"
+      }
+    ],
+    "name": "recipe",
+    "type": "document"
+  },
+  {
+    "fields": [
+      {
+        "validation": [
+          {
+            "rules": [
+              {
+                "flag": "presence",
+                "constraint": "required"
+              }
+            ],
+            "level": "error"
+          }
+        ],
+        "name": "text",
+        "type": "string"
+      },
+      {
+        "name": "qty",
+        "type": "number"
+      },
+      {
+        "name": "unit",
+        "type": "string"
+      },
+      {
+        "name": "item",
+        "type": "string"
+      }
+    ],
+    "name": "ingredientLine",
+    "type": "object",
+    "title": "Ingredient line"
+  }
+]
