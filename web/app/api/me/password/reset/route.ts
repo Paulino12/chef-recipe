@@ -11,6 +11,12 @@ function getSupabasePublicEnv() {
   return { url, anonKey };
 }
 
+function getPasswordResetRedirectUrl(req: NextRequest) {
+  const configured = process.env.PASSWORD_RESET_REDIRECT_TO?.trim();
+  if (configured) return configured;
+  return new URL("/reset-password", req.nextUrl.origin).toString();
+}
+
 export async function POST(req: NextRequest) {
   const user = await getCurrentUserFromRequest(req);
   if (!user) {
@@ -29,10 +35,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const redirectTo = process.env.PASSWORD_RESET_REDIRECT_TO?.trim() || undefined;
   const { error } = await supabase.auth.resetPasswordForEmail(
     user.email,
-    redirectTo ? { redirectTo } : undefined,
+    { redirectTo: getPasswordResetRedirectUrl(req) },
   );
 
   if (error) {

@@ -1,24 +1,51 @@
-import { defineField, defineType } from "sanity";
+﻿import { defineField, defineType } from "sanity";
+
+const WORKFLOW_STATUS_OPTIONS = [
+  { title: "Intake", value: "intake" },
+  { title: "In review", value: "review" },
+  { title: "Approved", value: "approved" },
+  { title: "Live", value: "live" },
+  { title: "Archived", value: "archived" },
+] as const;
+
+const WORKFLOW_STATUS_LABELS: Record<string, string> = Object.fromEntries(
+  WORKFLOW_STATUS_OPTIONS.map((option) => [option.value, option.title]),
+);
+
+const SOURCE_TYPE_OPTIONS = [
+  { title: "Manual entry", value: "manual" },
+  { title: "Imported PDF", value: "pdf_import" },
+  { title: "Legacy dataset", value: "legacy_dataset" },
+  { title: "Chef submission", value: "chef_submission" },
+  { title: "Adapted recipe", value: "adapted" },
+] as const;
 
 /**
- * Recipe document schema.
- * This matches your golden_samples_v3 shape.
+ * Recipe document schema used by both Dining and Hospitality umbrellas.
+ * Dining remains the implicit fallback for older documents that predate the
+ * collection field.
+ *
+ * Workflow metadata is intentionally additive so the same recipe document
+ * continues to power both the web and mobile consumers without API changes.
  */
 export const recipe = defineType({
   preview: {
     select: {
       title: "title",
       plu: "pluNumber",
+      collection: "collection",
+      workflowStatus: "workflowStatus",
       pub: "visibility.public",
       ent: "visibility.enterprise",
       media: "image",
     },
-    prepare({ title, plu, pub, ent, media }) {
-      const tags = [pub ? "PUBLIC" : null, ent ? "ENTERPRISE" : null].filter(Boolean);
+    prepare({ title, plu, collection, workflowStatus, pub, ent, media }) {
+      const workflowLabel = WORKFLOW_STATUS_LABELS[workflowStatus] ?? "Intake";
+      const tags = [workflowLabel, pub ? "PUBLIC" : null, ent ? "ENTERPRISE" : null].filter(Boolean);
 
       return {
         title,
-        subtitle: `RN ${plu}${tags.length ? " • " + tags.join(" + ") : ""}`,
+        subtitle: `${collection || "Dining"} | RN ${plu}${tags.length ? " • " + tags.join(" • ") : ""}`,
         media,
       };
     },
@@ -26,30 +53,100 @@ export const recipe = defineType({
   name: "recipe",
   title: "Recipe",
   type: "document",
+  groups: [
+    { name: "basics", title: "Basics", default: true },
+    { name: "content", title: "Method & ingredients" },
+    { name: "nutrition", title: "Nutrition" },
+    { name: "publishing", title: "Publishing" },
+    { name: "workflow", title: "Workflow" },
+    { name: "source", title: "Source" },
+  ],
+  initialValue: {
+    collection: "Dining",
+    workflowStatus: "intake",
+    sourceType: "manual",
+    visibility: {
+      public: false,
+      enterprise: false,
+    },
+  },
   fields: [
     defineField({
       name: "pluNumber",
       title: "RN (Recipe Number)",
       type: "number",
+      group: "basics",
       validation: (R) => R.required().integer().positive(),
     }),
     defineField({
       name: "title",
       title: "Title",
       type: "string",
+      group: "basics",
+      validation: (R) => R.required(),
+    }),
+    defineField({
+      name: "collection",
+      title: "Collection",
+      type: "string",
+      group: "basics",
+      description: "Top-level umbrella for recipe browsing and admin filtering.",
+      options: {
+        list: [
+          { title: "Dining", value: "Dining" },
+          { title: "Hospitality", value: "Hospitality" },
+        ],
+        layout: "radio",
+      },
       validation: (R) => R.required(),
     }),
     defineField({
       name: "categoryPath",
       title: "Category path",
       type: "array",
+      group: "basics",
       of: [{ type: "string" }],
     }),
-    defineField({ name: "portions", title: "Portions", type: "number" }),
+    defineField({
+      name: "portions",
+      title: "Portions",
+      type: "number",
+      group: "basics",
+    }),
+    defineField({
+      name: "workflowStatus",
+      title: "Workflow status",
+      type: "string",
+      group: "workflow",
+      description: "Editorial stage for moving a recipe from intake to live release.",
+      options: {
+        list: [...WORKFLOW_STATUS_OPTIONS],
+        layout: "radio",
+      },
+    }),
+    defineField({
+      name: "sourceType",
+      title: "Source type",
+      type: "string",
+      group: "workflow",
+      description: "How this recipe entered the system.",
+      options: {
+        list: [...SOURCE_TYPE_OPTIONS],
+      },
+    }),
+    defineField({
+      name: "editorialNotes",
+      title: "Editorial notes",
+      type: "text",
+      group: "workflow",
+      rows: 4,
+      description: "Internal notes for missing fields, launch concerns, or review comments.",
+    }),
     defineField({
       name: "image",
       title: "Recipe image",
       type: "image",
+      group: "publishing",
       options: { hotspot: true },
       description:
         "Optional uploaded image. If empty, the app falls back to Image URL and then placeholder.",
@@ -58,25 +155,25 @@ export const recipe = defineType({
       name: "imageUrl",
       title: "Image URL (fallback)",
       type: "string",
+      group: "publishing",
       description:
         "Fallback image URL/path used when no uploaded image is set (supports /recipe-placeholder.svg).",
     }),
-
     defineField({
       name: "ingredients",
       title: "Ingredients",
       type: "array",
+      group: "content",
       of: [{ type: "ingredientLine" }],
     }),
-
     defineField({
       name: "method",
       title: "Method",
       type: "array",
+      group: "content",
       of: [
         {
           type: "block",
-          // allow numbered lists (what you want)
           lists: [
             { title: "Number", value: "number" },
             { title: "Bullet", value: "bullet" },
@@ -84,18 +181,18 @@ export const recipe = defineType({
         },
       ],
     }),
-
     defineField({
       name: "methodText",
       title: "Method (plain)",
       type: "text",
+      group: "content",
       readOnly: true,
     }),
-
     defineField({
       name: "allergens",
       title: "Allergens (UK14)",
       type: "object",
+      group: "content",
       fields: [
         defineField({ name: "gluten", type: "string" }),
         defineField({ name: "crustaceans", type: "string" }),
@@ -113,11 +210,11 @@ export const recipe = defineType({
         defineField({ name: "molluscs", type: "string" }),
       ],
     }),
-
     defineField({
       name: "nutrition",
       title: "Nutrition",
       type: "object",
+      group: "nutrition",
       fields: [
         defineField({
           name: "portionNetWeightG",
@@ -160,11 +257,11 @@ export const recipe = defineType({
         }),
       ],
     }),
-
     defineField({
       name: "visibility",
       title: "Publishing",
       type: "object",
+      group: "publishing",
       description: "Choose where this recipe appears.",
       fields: [
         defineField({
@@ -183,11 +280,11 @@ export const recipe = defineType({
         }),
       ],
     }),
-
     defineField({
       name: "source",
       title: "Source",
       type: "object",
+      group: "source",
       fields: [defineField({ name: "pdfPath", type: "string", readOnly: true })],
     }),
   ],

@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 import { PortableText } from "next-sanity";
 
 import { Badge } from "@/components/ui/badge";
+import { MotionReveal } from "@/components/motion/reveal";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { RelatedRecipesCarousel } from "@/components/related-recipes-carousel";
 import {
   Card,
   CardContent,
@@ -20,6 +22,7 @@ import {
   getAccessibleRecipeById,
   getRecipeById,
   listContainedAllergenLabels,
+  listRelatedRecipeCards,
   RecipeAudienceFilter,
 } from "@/lib/recipes";
 import { getFavoriteIdsFromCookieStore } from "@/lib/api/favoriteCookie";
@@ -34,6 +37,8 @@ type RecipeDetailSearchParams = {
   audience?: string | string[];
   from?: string | string[];
   favorites?: string | string[];
+  collection?: string | string[];
+  returnTo?: string | string[];
 };
 
 function parseAudience(value?: string): RecipeAudienceFilter | null {
@@ -87,6 +92,25 @@ function formatRiLabel(riPercent: number | null) {
   return riPercent === null ? "No RI" : `${formatNumber(riPercent)}% RI`;
 }
 
+function resolveReturnTo(value?: string) {
+  const next = value?.trim();
+  if (!next) return null;
+  if (!next.startsWith("/")) return null;
+  if (next.startsWith("//")) return null;
+  return next;
+}
+
+function relatedReasonLabel(reason: "subrecipe" | "favorite" | "category") {
+  switch (reason) {
+    case "subrecipe":
+      return "Sub recipe";
+    case "favorite":
+      return "Favourite";
+    case "category":
+      return "Same category";
+  }
+}
+
 export default async function RecipePage({
   params,
   searchParams,
@@ -105,6 +129,8 @@ export default async function RecipePage({
 
   const requestedAudience = parseAudience(pickFirstQueryParam(sp.audience));
   const favoritesOnly = parseFavorites(pickFirstQueryParam(sp.favorites));
+  const collection = (pickFirstQueryParam(sp.collection) ?? "").trim();
+  const returnTo = resolveReturnTo(pickFirstQueryParam(sp.returnTo));
   const from = (pickFirstQueryParam(sp.from) ?? "").trim();
   const isOwner = session.user.role === "owner";
   const audience = getAllowedAudience(
@@ -125,22 +151,24 @@ export default async function RecipePage({
   if (!recipe) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <Card className="surface-panel">
-          <CardHeader>
-            <CardTitle>Recipe not found</CardTitle>
-            <CardDescription>
-              The recipe may have been removed or the link may be invalid.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link
-              href="/recipes"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Back to recipes
-            </Link>
-          </CardContent>
-        </Card>
+        <MotionReveal>
+          <Card className="surface-panel">
+            <CardHeader>
+              <CardTitle>Recipe not found</CardTitle>
+              <CardDescription>
+                The recipe may have been removed or the link may be invalid.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href="/recipes"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Back to recipes
+              </Link>
+            </CardContent>
+          </Card>
+        </MotionReveal>
       </main>
     );
   }
@@ -149,7 +177,7 @@ export default async function RecipePage({
   const cookieFavoriteIds = getFavoriteIdsFromCookieStore(cookieStore);
   const favoriteIds = new Set([
     ...cookieFavoriteIds,
-    ...(await listRecipeFavoriteIds(session.user.id, [recipe.id])),
+    ...(await listRecipeFavoriteIds(session.user.id)),
   ]);
   const isFavorite = favoriteIds.has(recipe.id);
 
@@ -229,16 +257,47 @@ export default async function RecipePage({
       ? await findSubRecipeTargets(subRecipeLabels, {
           audience,
           includeAll: isOwner,
+          collection: recipe.collection,
         })
       : {};
+  const subRecipeIds = subRecipeLabels
+    .map((label) => subRecipeTargets[label]?.id)
+    .filter((value): value is string => Boolean(value));
+  const relatedRecipes = await listRelatedRecipeCards({
+    audience,
+    includeAll: isOwner,
+    collection: recipe.collection,
+    categoryPath: recipe.categoryPath,
+    currentRecipeId: recipe.id,
+    subRecipeIds,
+    favoriteRecipeIds: [...favoriteIds],
+    limit: 7,
+  });
+  const relatedRecipeItems = relatedRecipes.map((item) => ({
+    id: item.id,
+    title: item.title,
+    imageUrl: item.imageUrl,
+    categoryLabel: item.categoryPath?.join(" / ") ?? "Uncategorised",
+    pluNumber: item.pluNumber,
+    href: `/recipes/${encodeURIComponent(item.id)}?audience=${encodeURIComponent(audience)}${
+      favoritesOnly ? "&favorites=1" : ""
+    }${item.collection ? `&collection=${encodeURIComponent(item.collection)}` : ""}${
+      returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""
+    }${isOwner ? "&from=owner" : ""}`,
+    reasonLabel: relatedReasonLabel(item.reason),
+  }));
 
   return (
     <main className="mx-auto max-w-4xl px-4 pb-16 pt-8 print:max-w-none print:px-0 print:pb-0 print:pt-0 sm:px-6">
       <Link
         href={
-          isOwner && from === "owner"
-            ? "/owner"
-            : `/recipes?audience=${encodeURIComponent(audience)}${favoritesOnly ? "&favorites=1" : ""}`
+          returnTo
+            ? returnTo
+            : isOwner && from === "owner"
+            ? `/owner${collection ? `?collection=${encodeURIComponent(collection)}` : ""}`
+            : `/recipes?audience=${encodeURIComponent(audience)}${favoritesOnly ? "&favorites=1" : ""}${
+                collection ? `&collection=${encodeURIComponent(collection)}` : ""
+              }`
         }
         className={cn(
           buttonVariants({ variant: "ghost", size: "sm" }),
@@ -248,7 +307,8 @@ export default async function RecipePage({
         Back to list
       </Link>
 
-      <Card className="surface-panel mb-6 border-white/40 print:break-inside-avoid print:border-border print:shadow-none">
+      <MotionReveal>
+        <Card className="surface-panel mb-6 border-white/40 print:break-inside-avoid print:border-border print:shadow-none">
         <CardHeader className="space-y-4">
           {isOwner ? (
             <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -270,7 +330,7 @@ export default async function RecipePage({
             <div className="space-y-2">
               <CardTitle className="text-3xl">{recipe.title}</CardTitle>
               <CardDescription>
-                {recipe.categoryPath?.join(" / ") || "Uncategorised"} | RN{" "}
+                {recipe.collection} | {recipe.categoryPath?.join(" / ") || "Uncategorised"} | RN{" "}
                 {recipe.pluNumber}
               </CardDescription>
             </div>
@@ -300,8 +360,8 @@ export default async function RecipePage({
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
-          <div className="grid gap-3 md:grid-cols-[1.3fr_1fr] md:items-stretch">
-            <div className="overflow-hidden rounded-lg border border-border/70 bg-muted/20">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-start">
+            <div className="overflow-hidden rounded-xl border border-border/70 bg-muted/20">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={
@@ -309,38 +369,54 @@ export default async function RecipePage({
                   "/recipe-placeholder.svg"
                 }
                 alt={recipe.title}
-                className="h-56 w-full object-cover md:h-full md:min-h-52"
+                className="aspect-4/3 w-full object-cover"
                 loading="lazy"
               />
             </div>
 
-            <div className="space-y-3">
-              <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Portions
-                </p>
-                <p className="mt-1 text-lg font-semibold">
-                  {recipe.portions ?? "-"}
-                </p>
+            <div className="grid gap-3">
+              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Collection
+                    </p>
+                    <p className="mt-1 text-sm font-medium">{recipe.collection}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Category
+                    </p>
+                    <p className="mt-1 text-sm font-medium">
+                      {recipe.categoryPath?.join(" / ") ?? "Uncategorised"}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Portion Weight
-                </p>
-                <p className="mt-1 text-lg font-semibold">
-                  {portionWeight ? `${portionWeight} g` : "-"}
-                </p>
+
+              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Portions
+                    </p>
+                    <p className="mt-1 text-lg font-semibold">
+                      {recipe.portions ?? "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Portion weight
+                    </p>
+                    <p className="mt-1 text-lg font-semibold">
+                      {portionWeight ? `${portionWeight} g` : "-"}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Category
-                </p>
-                <p className="mt-1 text-sm font-medium">
-                  {recipe.categoryPath?.[0] ?? "Uncategorised"}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+
+              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Allergens
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
@@ -352,9 +428,11 @@ export default async function RecipePage({
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </MotionReveal>
 
-      <Card className="mb-6 print:break-inside-avoid print:shadow-none">
+      <MotionReveal delay={0.06}>
+        <Card className="mb-6 print:break-inside-avoid print:shadow-none">
         <CardHeader>
           <CardTitle className="text-lg">Nutrition</CardTitle>
           <CardDescription>
@@ -494,9 +572,10 @@ export default async function RecipePage({
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </MotionReveal>
 
-      <div className="grid gap-6 print:grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]">
+      <MotionReveal delay={0.1} className="grid gap-6 print:grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="h-fit print:break-inside-avoid">
           <CardHeader>
             <CardTitle className="text-lg">Ingredients</CardTitle>
@@ -512,12 +591,14 @@ export default async function RecipePage({
                       extractPtnReference(text);
                     const target = ptnLabel ? subRecipeTargets[ptnLabel] : null;
                     const fallbackHref = ptnLabel
-                      ? `/recipes?audience=${encodeURIComponent(audience)}&q=${encodeURIComponent(ptnLabel)}`
+                      ? `/recipes?audience=${encodeURIComponent(audience)}&q=${encodeURIComponent(ptnLabel)}${
+                          recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""
+                        }`
                       : null;
                     const targetHref = target?.directMatch
                       ? `/recipes/${encodeURIComponent(target.id)}?audience=${encodeURIComponent(audience)}${
                           isOwner ? "&from=owner" : ""
-                        }`
+                        }${recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""}`
                       : null;
 
                     return (
@@ -532,14 +613,14 @@ export default async function RecipePage({
                             {targetHref ? (
                               <Link
                                 href={targetHref}
-                                className="underline underline-offset-4 hover:text-foreground"
+                                className="link-hover text-foreground"
                               >
                                 {target?.title ?? ptnLabel}
                               </Link>
                             ) : fallbackHref ? (
                               <Link
                                 href={fallbackHref}
-                                className="underline underline-offset-4 hover:text-foreground"
+                                className="link-hover text-foreground"
                               >
                                 {ptnLabel} (search)
                               </Link>
@@ -613,7 +694,13 @@ export default async function RecipePage({
             )}
           </CardContent>
         </Card>
-      </div>
+      </MotionReveal>
+
+      {relatedRecipeItems.length > 0 ? (
+        <MotionReveal delay={0.14}>
+          <RelatedRecipesCarousel items={relatedRecipeItems} />
+        </MotionReveal>
+      ) : null}
     </main>
   );
 }

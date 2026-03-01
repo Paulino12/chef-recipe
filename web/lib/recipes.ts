@@ -19,9 +19,13 @@ export type AllergenSlug =
   | "lupin"
   | "molluscs";
 
+export const RECIPE_COLLECTIONS = ["Dining", "Hospitality"] as const;
+export type RecipeCollection = (typeof RECIPE_COLLECTIONS)[number];
+
 export type Recipe = {
   id: string;
   pluNumber: number;
+  collection: RecipeCollection;
   imageUrl?: string;
   title: string;
   categoryPath: string[];
@@ -55,6 +59,7 @@ export type RecipeAudienceFilter = "public" | "enterprise" | "all";
 export type PublicRecipeCard = {
   id: string;
   pluNumber: number;
+  collection: RecipeCollection;
   imageUrl?: string;
   title: string;
   categoryPath?: string[];
@@ -69,6 +74,11 @@ export type PublicRecipeCard = {
   };
 };
 
+export type RelatedRecipeCard = Pick<
+  PublicRecipeCard,
+  "id" | "pluNumber" | "collection" | "imageUrl" | "title" | "categoryPath" | "visibility"
+>;
+
 export type PublicRecipesResult = {
   items: PublicRecipeCard[];
   total: number;
@@ -79,6 +89,7 @@ export type PublicRecipesResult = {
 
 export type RecipeCategoryOption = {
   name: string;
+  value: string;
   count: number;
 };
 
@@ -133,9 +144,23 @@ function normalizePageSize(value: number | undefined): PublicPageSize {
   return 10;
 }
 
-function normalizeCategory(value?: string) {
+function normalizeCategory(value?: string | null) {
   const category = value?.trim();
   return category ? category : null;
+}
+
+function splitCategoryPath(value?: string | null) {
+  const category = normalizeCategory(value);
+  if (!category) return [] as string[];
+  return category
+    .split(" / ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+export function normalizeCollection(value?: string | null): RecipeCollection | null {
+  if (value === "Dining" || value === "Hospitality") return value;
+  return null;
 }
 
 function normalizeRecipeIds(values?: string[]) {
@@ -144,8 +169,22 @@ function normalizeRecipeIds(values?: string[]) {
   return ids.length > 0 ? ids : null;
 }
 
+function normalizeCategoryPathArray(value?: string[] | null) {
+  if (!value?.length) return [] as string[];
+  return value.map((part) => part?.trim()).filter(Boolean);
+}
+
 function normalizeComparableText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function shuffleArray<T>(items: T[]) {
+  const next = [...items];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex]!, next[index]!];
+  }
+  return next;
 }
 
 function scoreTitleMatch(labelNorm: string, titleNorm: string) {
@@ -190,6 +229,7 @@ export async function searchRecipes(query: string) {
     ] | order(title asc, _id asc) {
       "id": _id,
       pluNumber,
+      "collection": coalesce(collection, "Dining"),
       "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
       title,
       categoryPath,
@@ -204,7 +244,7 @@ export async function searchRecipes(query: string) {
 
 export async function listPublicRecipes(
   query?: string,
-  options?: { page?: number; pageSize?: number },
+  options?: { page?: number; pageSize?: number; collection?: RecipeCollection | null },
 ): Promise<PublicRecipesResult> {
   return listAccessibleRecipes("public", query, options);
 }
@@ -215,11 +255,13 @@ export async function listPublicRecipes(
 export async function countAccessibleRecipes(
   audience: RecipeAudienceFilter,
   query?: string,
-  options?: { category?: string; recipeIds?: string[] },
+  options?: { category?: string; recipeIds?: string[]; collection?: RecipeCollection | null },
 ): Promise<number> {
   const q = query?.trim();
   const category = normalizeCategory(options?.category);
+  const categoryPath = splitCategoryPath(category);
   const recipeIds = normalizeRecipeIds(options?.recipeIds);
+  const collection = normalizeCollection(options?.collection);
   const visibility = visibilityPredicate(audience);
   const qParam = q ? `*${q}*` : null;
   const countQuery = `
@@ -228,15 +270,31 @@ export async function countAccessibleRecipes(
         _type == "recipe" &&
         ${visibility} &&
         (!defined($recipeIds) || _id in $recipeIds) &&
-        (!defined($category) || $category in categoryPath) &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
+        (
+          !defined($categoryPath) ||
+          (
+            count($categoryPath) == 1 &&
+            defined(categoryPath[0]) &&
+            categoryPath[0] == $categoryPath[0]
+          ) ||
+          (
+            count($categoryPath) == 2 &&
+            defined(categoryPath[0]) &&
+            defined(categoryPath[1]) &&
+            categoryPath[0] == $categoryPath[0] &&
+            categoryPath[1] == $categoryPath[1]
+          )
+        ) &&
         (!defined($q) || title match $q)
       ]
     )
   `;
   const totalRaw = await sanity.fetch<number>(countQuery, {
     q: qParam,
-    category,
+    categoryPath: categoryPath.length ? categoryPath : null,
     recipeIds,
+    collection,
   });
   return Number.isFinite(totalRaw) ? Math.max(0, Number(totalRaw)) : 0;
 }
@@ -252,17 +310,21 @@ export async function listAccessibleRecipes(
     pageSize?: number;
     category?: string;
     recipeIds?: string[];
+    collection?: RecipeCollection | null;
   },
 ): Promise<PublicRecipesResult> {
   const q = query?.trim();
   const category = normalizeCategory(options?.category);
+  const categoryPath = splitCategoryPath(category);
   const recipeIds = normalizeRecipeIds(options?.recipeIds);
+  const collection = normalizeCollection(options?.collection);
   const page = normalizePage(options?.page);
   const pageSize = normalizePageSize(options?.pageSize);
   const params = {
     q: q ? `*${q}*` : null,
-    category,
+    categoryPath: categoryPath.length ? categoryPath : null,
     recipeIds,
+    collection,
   };
   const visibility = visibilityPredicate(audience);
   const countQuery = `
@@ -271,7 +333,22 @@ export async function listAccessibleRecipes(
         _type == "recipe" &&
         ${visibility} &&
         (!defined($recipeIds) || _id in $recipeIds) &&
-        (!defined($category) || $category in categoryPath) &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
+        (
+          !defined($categoryPath) ||
+          (
+            count($categoryPath) == 1 &&
+            defined(categoryPath[0]) &&
+            categoryPath[0] == $categoryPath[0]
+          ) ||
+          (
+            count($categoryPath) == 2 &&
+            defined(categoryPath[0]) &&
+            defined(categoryPath[1]) &&
+            categoryPath[0] == $categoryPath[0] &&
+            categoryPath[1] == $categoryPath[1]
+          )
+        ) &&
         (!defined($q) || title match $q)
       ]
     )
@@ -281,11 +358,27 @@ export async function listAccessibleRecipes(
       _type == "recipe" &&
       ${visibility} &&
       (!defined($recipeIds) || _id in $recipeIds) &&
-      (!defined($category) || $category in categoryPath) &&
+      (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
+      (
+        !defined($categoryPath) ||
+        (
+          count($categoryPath) == 1 &&
+          defined(categoryPath[0]) &&
+          categoryPath[0] == $categoryPath[0]
+        ) ||
+        (
+          count($categoryPath) == 2 &&
+          defined(categoryPath[0]) &&
+          defined(categoryPath[1]) &&
+          categoryPath[0] == $categoryPath[0] &&
+          categoryPath[1] == $categoryPath[1]
+        )
+      ) &&
       (!defined($q) || title match $q)
     ] | order(title asc, _id asc)[$start...$end] {
       "id": _id,
       pluNumber,
+      "collection": coalesce(collection, "Dining"),
       "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
       title,
       categoryPath,
@@ -351,6 +444,7 @@ export async function getAccessibleRecipeById(id: string, audience: RecipeAudien
     ][0]{
       "id": _id,
       pluNumber,
+      "collection": coalesce(collection, "Dining"),
       "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
       title,
       categoryPath,
@@ -371,30 +465,49 @@ export async function getAccessibleRecipeById(id: string, audience: RecipeAudien
  */
 export async function listAccessibleCategories(
   audience: RecipeAudienceFilter,
-  options?: { recipeIds?: string[] },
+  options?: { recipeIds?: string[]; collection?: RecipeCollection | null },
 ) {
   const recipeIds = normalizeRecipeIds(options?.recipeIds);
+  const collection = normalizeCollection(options?.collection);
   const query = `
     *[
       _type == "recipe" &&
       ${visibilityPredicate(audience)} &&
       (!defined($recipeIds) || _id in $recipeIds) &&
+      (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
       defined(categoryPath[0]) &&
       string(categoryPath[0]) != ""
     ]{
-      "category": categoryPath[0]
+      categoryPath
     }
   `;
-  const rows = await sanity.fetch<Array<{ category?: string }>>(query, { recipeIds });
-  const counts = new Map<string, number>();
+  const rows = await sanity.fetch<Array<{ categoryPath?: string[] }>>(query, { recipeIds, collection });
+  const counts = new Map<string, RecipeCategoryOption>();
   for (const row of rows) {
-    const category = row.category?.trim();
-    if (!category) continue;
-    counts.set(category, (counts.get(category) ?? 0) + 1);
+    const parts = Array.isArray(row.categoryPath)
+      ? row.categoryPath.map((part) => part?.trim()).filter(Boolean)
+      : [];
+    if (!parts.length) continue;
+
+    const topValue = parts[0]!;
+    const topEntry = counts.get(topValue);
+    if (topEntry) {
+      topEntry.count += 1;
+    } else {
+      counts.set(topValue, { name: topValue, value: topValue, count: 1 });
+    }
+
+    if (parts.length > 1) {
+      const nestedValue = `${parts[0]} / ${parts[1]}`;
+      const nestedEntry = counts.get(nestedValue);
+      if (nestedEntry) {
+        nestedEntry.count += 1;
+      } else {
+        counts.set(nestedValue, { name: nestedValue, value: nestedValue, count: 1 });
+      }
+    }
   }
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return [...counts.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -415,16 +528,18 @@ export function extractPtnReference(value: unknown) {
  */
 export async function findSubRecipeTargets(
   labels: string[],
-  options: { audience: RecipeAudienceFilter; includeAll: boolean },
+  options: { audience: RecipeAudienceFilter; includeAll: boolean; collection?: RecipeCollection | null },
 ): Promise<Record<string, SubRecipeTarget | null>> {
   const uniqueLabels = [...new Set(labels.map((x) => x.trim()).filter(Boolean))];
   if (!uniqueLabels.length) return {};
 
+  const collection = normalizeCollection(options.collection);
   const query = options.includeAll
     ? `
       *[
         _type == "recipe" &&
-        !(_id in path("drafts.**"))
+        !(_id in path("drafts.**")) &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection)
       ]{
         "id": _id,
         title,
@@ -435,7 +550,8 @@ export async function findSubRecipeTargets(
       *[
         _type == "recipe" &&
         !(_id in path("drafts.**")) &&
-        ${visibilityPredicate(options.audience)}
+        ${visibilityPredicate(options.audience)} &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection)
       ]{
         "id": _id,
         title,
@@ -443,7 +559,7 @@ export async function findSubRecipeTargets(
       }
     `;
 
-  const rows = await sanity.fetch<RecipeTitleRow[]>(query);
+  const rows = await sanity.fetch<RecipeTitleRow[]>(query, { collection });
   const normalizedRows = rows.map((row) => ({
     ...row,
     norm: normalizeComparableText(row.title || ""),
@@ -474,9 +590,187 @@ export async function findSubRecipeTargets(
       }
     }
 
-    // strict threshold for direct links, lower threshold for RN-backed fallback search.
     result[label] = bestScore >= 60 ? best : null;
   }
 
   return result;
+}
+
+async function fetchRecipeCardsByIds(
+  ids: string[],
+  options: {
+    audience: RecipeAudienceFilter;
+    includeAll: boolean;
+    collection?: RecipeCollection | null;
+  },
+): Promise<RelatedRecipeCard[]> {
+  const recipeIds = normalizeRecipeIds(ids);
+  if (!recipeIds?.length) return [];
+
+  const collection = normalizeCollection(options.collection);
+  const query = options.includeAll
+    ? `
+      *[
+        _type == "recipe" &&
+        _id in $recipeIds &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection)
+      ]{
+        "id": _id,
+        pluNumber,
+        "collection": coalesce(collection, "Dining"),
+        "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
+        title,
+        categoryPath,
+        visibility
+      }
+    `
+    : `
+      *[
+        _type == "recipe" &&
+        _id in $recipeIds &&
+        ${visibilityPredicate(options.audience)} &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection)
+      ]{
+        "id": _id,
+        pluNumber,
+        "collection": coalesce(collection, "Dining"),
+        "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
+        title,
+        categoryPath,
+        visibility
+      }
+    `;
+
+  const rows = await sanity.fetch<RelatedRecipeCard[]>(query, { recipeIds, collection });
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return recipeIds.map((id) => byId.get(id)).filter((row): row is RelatedRecipeCard => Boolean(row));
+}
+
+export async function listRelatedRecipesInCategory(options: {
+  audience: RecipeAudienceFilter;
+  includeAll: boolean;
+  collection?: RecipeCollection | null;
+  categoryPath?: string[] | null;
+  excludeIds?: string[];
+  limit?: number;
+}): Promise<RelatedRecipeCard[]> {
+  const collection = normalizeCollection(options.collection);
+  const categoryPath = normalizeCategoryPathArray(options.categoryPath);
+  if (!categoryPath.length) return [];
+
+  const excludeIds = normalizeRecipeIds(options.excludeIds);
+  const limit = Math.max(1, Math.min(options.limit ?? 5, 24));
+  const [category0, category1] = categoryPath;
+  const query = options.includeAll
+    ? `
+      *[
+        _type == "recipe" &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
+        (!defined($excludeIds) || !(_id in $excludeIds)) &&
+        defined(categoryPath[0]) &&
+        categoryPath[0] == $category0 &&
+        (!defined($category1) || (defined(categoryPath[1]) && categoryPath[1] == $category1))
+      ] | order(title asc, _id asc)[0...$limit]{
+        "id": _id,
+        pluNumber,
+        "collection": coalesce(collection, "Dining"),
+        "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
+        title,
+        categoryPath,
+        visibility
+      }
+    `
+    : `
+      *[
+        _type == "recipe" &&
+        ${visibilityPredicate(options.audience)} &&
+        (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
+        (!defined($excludeIds) || !(_id in $excludeIds)) &&
+        defined(categoryPath[0]) &&
+        categoryPath[0] == $category0 &&
+        (!defined($category1) || (defined(categoryPath[1]) && categoryPath[1] == $category1))
+      ] | order(title asc, _id asc)[0...$limit]{
+        "id": _id,
+        pluNumber,
+        "collection": coalesce(collection, "Dining"),
+        "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
+        title,
+        categoryPath,
+        visibility
+      }
+    `;
+
+  return sanity.fetch<RelatedRecipeCard[]>(query, {
+    collection,
+    excludeIds,
+    category0,
+    category1: category1 ?? null,
+    limit,
+  });
+}
+
+export async function listRelatedRecipeCards(options: {
+  audience: RecipeAudienceFilter;
+  includeAll: boolean;
+  collection?: RecipeCollection | null;
+  categoryPath?: string[] | null;
+  currentRecipeId: string;
+  subRecipeIds?: string[];
+  favoriteRecipeIds?: string[];
+  limit?: number;
+}): Promise<Array<RelatedRecipeCard & { reason: "subrecipe" | "favorite" | "category" }>> {
+  const limit = Math.max(1, Math.min(options.limit ?? 5, 12));
+  const selected: Array<RelatedRecipeCard & { reason: "subrecipe" | "favorite" | "category" }> = [];
+  const selectedIds = new Set<string>([options.currentRecipeId]);
+
+  const pushRows = (
+    rows: RelatedRecipeCard[],
+    reason: "subrecipe" | "favorite" | "category",
+  ) => {
+    for (const row of rows) {
+      if (selected.length >= limit) break;
+      if (selectedIds.has(row.id)) continue;
+      selectedIds.add(row.id);
+      selected.push({ ...row, reason });
+    }
+  };
+
+  const subRecipeRows = await fetchRecipeCardsByIds(options.subRecipeIds ?? [], {
+    audience: options.audience,
+    includeAll: options.includeAll,
+    collection: options.collection,
+  });
+  pushRows(shuffleArray(subRecipeRows), "subrecipe");
+
+  if (selected.length < limit) {
+    const favoriteRows = await fetchRecipeCardsByIds(options.favoriteRecipeIds ?? [], {
+      audience: options.audience,
+      includeAll: options.includeAll,
+      collection: options.collection,
+    });
+    const categoryPath = normalizeCategoryPathArray(options.categoryPath);
+    const filteredFavorites = categoryPath.length
+      ? favoriteRows.filter((row) => {
+          const rowPath = normalizeCategoryPathArray(row.categoryPath);
+          if (!rowPath.length || rowPath[0] !== categoryPath[0]) return false;
+          if (categoryPath[1]) return rowPath[1] === categoryPath[1];
+          return true;
+        })
+      : favoriteRows;
+    pushRows(shuffleArray(filteredFavorites), "favorite");
+  }
+
+  if (selected.length < limit) {
+    const categoryRows = await listRelatedRecipesInCategory({
+      audience: options.audience,
+      includeAll: options.includeAll,
+      collection: options.collection,
+      categoryPath: options.categoryPath,
+      excludeIds: [...selectedIds],
+      limit: limit - selected.length,
+    });
+    pushRows(shuffleArray(categoryRows), "category");
+  }
+
+  return selected;
 }

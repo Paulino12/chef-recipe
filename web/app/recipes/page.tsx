@@ -15,6 +15,7 @@ import { getServerAccessSession } from "@/lib/api/serverSession";
 import {
   buildHrefWithQuery,
   parseCategoryFilter,
+  parseCollectionFilter,
   parsePageNumber,
   parsePageSizeNumber,
   pickFirstQueryParam,
@@ -36,6 +37,7 @@ type RecipesSearchParams = {
   pageSize?: string | string[];
   audience?: string | string[];
   category?: string | string[];
+  collection?: string | string[];
   favorites?: string | string[];
 };
 
@@ -70,10 +72,12 @@ function buildRecipesHref(params: {
   pageSize: number;
   audience: RecipeAudienceFilter;
   category: string;
+  collection: string;
   favoritesOnly: boolean;
 }) {
   return buildHrefWithQuery("/recipes", {
     q: params.q,
+    collection: params.collection,
     category: params.category,
     audience: params.audience,
     favorites: params.favoritesOnly ? "1" : undefined,
@@ -110,6 +114,7 @@ export default async function RecipesPage({
   const isOwner = session.user.role === "owner";
   const requestedAudience = parseAudience(pickFirstQueryParam(sp.audience));
   const selectedCategory = parseCategoryFilter(pickFirstQueryParam(sp.category));
+  const selectedCollection = parseCollectionFilter(pickFirstQueryParam(sp.collection));
   const favoritesOnly = parseFavorites(pickFirstQueryParam(sp.favorites));
   const requestedPage = parsePageNumber(pickFirstQueryParam(sp.page));
   const requestedPageSize = parsePageSizeNumber(pickFirstQueryParam(sp.pageSize));
@@ -154,14 +159,16 @@ export default async function RecipesPage({
     page: requestedPage,
     pageSize: requestedPageSize,
     category: selectedCategory,
+    collection: selectedCollection || null,
     recipeIds: favoriteFilterIds,
   });
 
   const categories = await listAccessibleCategories(audience, {
+    collection: selectedCollection || null,
     recipeIds: favoriteFilterIds,
   });
   const activeCategory =
-    selectedCategory && categories.some((category) => category.name === selectedCategory)
+    selectedCategory && categories.some((category) => category.value === selectedCategory)
       ? selectedCategory
       : "";
 
@@ -169,31 +176,57 @@ export default async function RecipesPage({
     canViewPublic
       ? countAccessibleRecipes("public", q, {
           category: activeCategory,
+          collection: selectedCollection || null,
           recipeIds: favoriteFilterIds,
         })
       : Promise.resolve(0),
     canViewEnterprise
       ? countAccessibleRecipes("enterprise", q, {
           category: activeCategory,
+          collection: selectedCollection || null,
           recipeIds: favoriteFilterIds,
         })
       : Promise.resolve(0),
     canViewPublic && canViewEnterprise
       ? countAccessibleRecipes("all", q, {
           category: activeCategory,
+          collection: selectedCollection || null,
           recipeIds: favoriteFilterIds,
         })
       : Promise.resolve(0),
   ]);
+  const [umbrellaTotalCount, diningCount, hospitalityCount] = await Promise.all([
+    countAccessibleRecipes(audience, q, {
+      recipeIds: favoriteFilterIds,
+    }),
+    countAccessibleRecipes(audience, q, {
+      collection: "Dining",
+      recipeIds: favoriteFilterIds,
+    }),
+    countAccessibleRecipes(audience, q, {
+      collection: "Hospitality",
+      recipeIds: favoriteFilterIds,
+    }),
+  ]);
   const favoritesCount = favoriteRecipeIds.length
     ? await countAccessibleRecipes(audience, q, {
         category: activeCategory,
+        collection: selectedCollection || null,
         recipeIds: favoriteRecipeIds,
       })
     : 0;
 
   const recipes = data.items;
-  const listAnimationKey = `${audience}|${activeCategory}|${q}|${
+  const currentListHref = buildRecipesHref({
+    q,
+    collection: selectedCollection,
+    category: activeCategory,
+    audience,
+    favoritesOnly,
+    page: data.page,
+    pageSize: data.pageSize,
+  });
+  const listAnimationKey = `${audience}|${selectedCollection || "all"}|${activeCategory}|${q}|${
     favoritesOnly ? "fav" : "all"
   }|${data.page}|${data.pageSize}`;
   const favoriteIds = allFavoriteIds;
@@ -215,10 +248,55 @@ export default async function RecipesPage({
               </div>
 
               <div className="flex flex-wrap gap-2">
+                <Link
+                  href={buildRecipesHref({
+                    q,
+                    collection: "",
+                    category: "",
+                    audience,
+                    favoritesOnly,
+                    page: 1,
+                    pageSize: data.pageSize,
+                  })}
+                  className={buttonVariants({
+                    variant: selectedCollection ? "outline" : "secondary",
+                    size: "sm",
+                  })}
+                >
+                  All recipes ({umbrellaTotalCount})
+                </Link>
+
+                {(["Dining", "Hospitality"] as const).map((collection) => {
+                  const count = collection === "Dining" ? diningCount : hospitalityCount;
+                  return (
+                    <Link
+                      key={collection}
+                      href={buildRecipesHref({
+                        q,
+                        collection,
+                        category: "",
+                        audience,
+                        favoritesOnly,
+                        page: 1,
+                        pageSize: data.pageSize,
+                      })}
+                      className={buttonVariants({
+                        variant: selectedCollection === collection ? "secondary" : "outline",
+                        size: "sm",
+                      })}
+                    >
+                      {collection} ({count})
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
                 {canViewPublic && canViewEnterprise ? (
                   <Link
                     href={buildRecipesHref({
                       q,
+                      collection: selectedCollection,
                       category: activeCategory,
                       audience: "all",
                       favoritesOnly,
@@ -235,6 +313,7 @@ export default async function RecipesPage({
                   <Link
                     href={buildRecipesHref({
                       q,
+                      collection: selectedCollection,
                       category: activeCategory,
                       audience: "public",
                       favoritesOnly,
@@ -254,6 +333,7 @@ export default async function RecipesPage({
                   <Link
                     href={buildRecipesHref({
                       q,
+                      collection: selectedCollection,
                       category: activeCategory,
                       audience: "enterprise",
                       favoritesOnly,
@@ -272,6 +352,7 @@ export default async function RecipesPage({
                 <Link
                   href={buildRecipesHref({
                     q,
+                    collection: selectedCollection,
                     category: activeCategory,
                     audience,
                     favoritesOnly: !favoritesOnly,
@@ -290,6 +371,7 @@ export default async function RecipesPage({
               <form action="/recipes" method="get" className="space-y-3">
                 <input type="hidden" name="page" value="1" />
                 <input type="hidden" name="audience" value={audience} />
+                {selectedCollection ? <input type="hidden" name="collection" value={selectedCollection} /> : null}
                 {favoritesOnly ? <input type="hidden" name="favorites" value="1" /> : null}
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
                   <div>
@@ -316,7 +398,7 @@ export default async function RecipesPage({
                     >
                       <option value="">All</option>
                       {categories.map((category) => (
-                        <option key={category.name} value={category.name}>
+                        <option key={category.value} value={category.value}>
                           {category.name} ({category.count})
                         </option>
                       ))}
@@ -412,14 +494,14 @@ export default async function RecipesPage({
                           <Link
                             href={`/recipes/${recipe.id}?audience=${encodeURIComponent(audience)}${
                               favoritesOnly ? "&favorites=1" : ""
-                            }`}
-                            className="underline-offset-4 hover:underline"
+                            }${recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""}&returnTo=${encodeURIComponent(currentListHref)}`}
+                            className="link-hover"
                           >
                             {recipe.title}
                           </Link>
                         </CardTitle>
                         <CardDescription className="mt-1">
-                          {(recipe.categoryPath?.[0] ?? "Uncategorised") + ` | RN ${recipe.pluNumber}`}
+                          {`${recipe.collection} | ${recipe.categoryPath?.[0] ?? "Uncategorised"} | RN ${recipe.pluNumber}`}
                         </CardDescription>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Allergens:{" "}
@@ -473,6 +555,7 @@ export default async function RecipesPage({
             <Link
               href={buildRecipesHref({
                 q,
+                collection: selectedCollection,
                 category: activeCategory,
                 audience,
                 favoritesOnly,
@@ -510,6 +593,7 @@ export default async function RecipesPage({
                   key={token}
                   href={buildRecipesHref({
                     q,
+                    collection: selectedCollection,
                     category: activeCategory,
                     audience,
                     favoritesOnly,
@@ -528,6 +612,7 @@ export default async function RecipesPage({
             <Link
               href={buildRecipesHref({
                 q,
+                collection: selectedCollection,
                 category: activeCategory,
                 audience,
                 favoritesOnly,

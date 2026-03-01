@@ -9,6 +9,7 @@ Web dashboard and public browsing app for the recipe platform.
 - `/recipes` Signed-in recipe browsing with audience filters (`public`, `enterprise`, `all`)
 - `/profile` Subscriber profile + billing management
 - `/billing` Legacy alias route that redirects to `/profile`
+- `/reset-password` Password reset landing page for recovery emails
 - `/signin` Supabase email/password sign-in
 - `/owner` Owner recipe visibility controls
 - `/owner/subscribers` Owner subscriber enterprise grant/revoke controls
@@ -16,7 +17,7 @@ Web dashboard and public browsing app for the recipe platform.
 
 ## Favorites
 
-- Recipe cards and recipe detail pages support favorite toggling (star icon).
+- Recipe cards and recipe detail pages support favorite toggling (heart icon).
 - Favorites are persisted in:
   - `public.user_recipe_favorites` (primary)
   - `recipe_favorites` cookie (fallback + immediate UX)
@@ -36,11 +37,14 @@ Web dashboard and public browsing app for the recipe platform.
 
 ## Auth Model
 
-- Sign-in stores Supabase access token in cookie `sb-access-token`.
+- Sign-in/sign-up now exchange the Supabase session through `POST /api/auth/session`.
+- The app stores auth tokens in server-set `HttpOnly` cookies (`sb-access-token`, `sb-refresh-token`).
 - API routes resolve current user through `web/lib/api/currentUser.ts`.
 - Owner pages check role through `getServerAccessSession()` (`web/lib/api/serverSession.ts`).
 - Sign-out uses server action `web/app/actions/auth.ts` to clear auth cookies.
 - New Supabase users are auto-provisioned as `subscriber` with `trialing` subscription and `enterprise_granted=false`.
+- Sign-up confirmation redirects back to `/signin?confirmed=1`.
+- Sign-in includes resend-confirmation and forgot-password actions.
 - Profile APIs are available for signed-in users:
   - `GET/PATCH /api/me/profile`
   - `POST /api/me/password/reset`
@@ -81,6 +85,11 @@ Optional for password reset redirect:
 
 - `PASSWORD_RESET_REDIRECT_TO`
 
+Supabase Auth redirect URLs should allow:
+
+- `https://<your-domain>/signin?confirmed=1`
+- `https://<your-domain>/reset-password`
+
 Required for server-to-server API calls in production:
 
 - `INTERNAL_API_ORIGIN`
@@ -104,6 +113,17 @@ create table if not exists public.user_recipe_favorites (
 create index if not exists idx_user_recipe_favorites_recipe_id
   on public.user_recipe_favorites (recipe_id);
 ```
+
+If this Supabase project was reset after the first schema setup, rerun the SQL block above once so favorites persist in the database instead of falling back to cookies only.
+
+## Supabase Email Templates
+
+The app now expects:
+
+- confirmation emails to return users to `/signin?confirmed=1`
+- password reset emails to return users to `/reset-password`
+
+Recommended template copy lives in `docs/supabase-email-templates.md`.
 
 ## Quality Snapshot
 

@@ -47,6 +47,37 @@ export function parseCategoryFilter(value?: string) {
   return value?.trim() ?? "";
 }
 
+export function parseCollectionFilter(value?: string) {
+  const collection = value?.trim();
+  if (collection === "Dining" || collection === "Hospitality") return collection;
+  return "";
+}
+
+export function parseImageFilter(value?: string) {
+  const imageFilter = value?.trim();
+  if (imageFilter === "with" || imageFilter === "without") return imageFilter;
+  return "";
+}
+
+export function parseVisibilityFilter(value?: string) {
+  const visibilityFilter = value?.trim();
+  if (
+    visibilityFilter === "public_on" ||
+    visibilityFilter === "public_off" ||
+    visibilityFilter === "enterprise_on" ||
+    visibilityFilter === "enterprise_off" ||
+    visibilityFilter === "any_on" ||
+    visibilityFilter === "both_off"
+  ) {
+    return visibilityFilter;
+  }
+  return "";
+}
+
+export function parseIncludeRelatedFilter(value?: string) {
+  return value === "1" || value === "true";
+}
+
 // Shared helper for consistent URL state building across paginated list pages.
 export function buildHrefWithQuery(pathname: string, query: Record<string, HrefQueryValue>) {
   const params = new URLSearchParams();

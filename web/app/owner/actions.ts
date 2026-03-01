@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { ADMIN_AUDIENCES, type AdminAudience } from "@/lib/api/adminRecipes";
 import { getInternalApiOrigin } from "@/lib/api/origin";
@@ -25,6 +26,14 @@ function getAdminApiKey() {
     throw new Error("Missing server config: ADMIN_API_KEY not set");
   }
   return adminApiKey;
+}
+
+function parseReturnTo(raw: string) {
+  const value = raw.trim();
+  if (!value) return "/owner";
+  if (!value.startsWith("/")) return "/owner";
+  if (value.startsWith("//")) return "/owner";
+  return value;
 }
 
 async function applyVisibility(input: {
@@ -70,6 +79,7 @@ export async function toggleVisibilityAction(formData: FormData) {
   const id = String(formData.get("id") ?? "").trim();
   const audience = parseAudience(String(formData.get("audience") ?? "").trim());
   const value = parseValue(String(formData.get("value") ?? "").trim());
+  const returnTo = parseReturnTo(String(formData.get("returnTo") ?? ""));
 
   if (!id) throw new Error("Missing recipe id");
   await applyVisibility({ ids: [id], audience, value });
@@ -77,12 +87,15 @@ export async function toggleVisibilityAction(formData: FormData) {
   // Keep owner and public pages in sync after a visibility toggle.
   revalidatePath("/");
   revalidatePath("/owner");
+  revalidatePath("/recipes");
+  redirect(returnTo);
 }
 
 export async function setPageVisibilityAction(formData: FormData) {
   const idsRaw = String(formData.get("ids") ?? "").trim();
   const audience = parseAudience(String(formData.get("audience") ?? "").trim());
   const value = parseValue(String(formData.get("value") ?? "").trim());
+  const returnTo = parseReturnTo(String(formData.get("returnTo") ?? ""));
 
   const ids = [...new Set(idsRaw.split(",").map((id) => id.trim()).filter(Boolean))];
   if (!ids.length) throw new Error("No recipes in current page to update.");
@@ -91,4 +104,6 @@ export async function setPageVisibilityAction(formData: FormData) {
   // Keep owner and public pages in sync after a visibility toggle.
   revalidatePath("/");
   revalidatePath("/owner");
+  revalidatePath("/recipes");
+  redirect(returnTo);
 }

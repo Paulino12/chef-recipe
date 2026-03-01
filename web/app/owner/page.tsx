@@ -1,13 +1,14 @@
 ﻿import Link from "next/link";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 
 import { MotionReveal } from "@/components/motion/reveal";
+import { OwnerVisibilityButton } from "@/components/owner-visibility-button";
+import { OwnerVisibilitySwitch } from "@/components/owner-visibility-switch";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
-import { PendingSubmitSwitch } from "@/components/ui/pending-submit-switch";
 import { type AdminRecipesResult } from "@/lib/api/adminRecipes";
 import { getInternalApiOrigin } from "@/lib/api/origin";
 import { buildCompactPagination } from "@/lib/pagination";
@@ -15,58 +16,58 @@ import { getServerAccessSession } from "@/lib/api/serverSession";
 import {
   buildHrefWithQuery,
   parseCategoryFilter,
+  parseCollectionFilter,
+  parseIncludeRelatedFilter,
+  parseImageFilter,
+  parseVisibilityFilter,
   parsePageNumber,
   parsePageSizeNumber,
   pickFirstQueryParam,
 } from "@/lib/searchParams";
 import { cn } from "@/lib/utils";
 
-import { setPageVisibilityAction, toggleVisibilityAction } from "./actions";
-
 type OwnerSearchParams = {
   q?: string | string[];
   page?: string | string[];
   pageSize?: string | string[];
   category?: string | string[];
+  collection?: string | string[];
+  image?: string | string[];
+  visibility?: string | string[];
+  includeRelated?: string | string[];
 };
 
-function buildOwnerHref(params: { q: string; category: string; page: number; pageSize: number }) {
+function buildOwnerHref(params: {
+  q: string;
+  category: string;
+  collection: string;
+  image: string;
+  visibility: string;
+  includeRelated: boolean;
+  page: number;
+  pageSize: number;
+}) {
   return buildHrefWithQuery("/owner", {
     q: params.q,
     category: params.category,
+    collection: params.collection,
+    image: params.image,
+    visibility: params.visibility,
+    includeRelated: params.includeRelated ? "1" : undefined,
     page: params.page,
     pageSize: params.pageSize,
   });
 }
 
-type VisibilityAudience = "public" | "enterprise";
-
-function HeaderVisibilitySwitch({
-  ids,
-  audience,
-  checked,
-  disabled,
-}: {
-  ids: string;
-  audience: VisibilityAudience;
-  checked: boolean;
-  disabled: boolean;
-}) {
-  return (
-    <form action={setPageVisibilityAction} className="inline-flex items-center gap-1.5">
-      <input type="hidden" name="ids" value={ids} />
-      <input type="hidden" name="audience" value={audience} />
-      <input type="hidden" name="value" value={String(!checked)} />
-      <PendingSubmitSwitch
-        checked={checked}
-        disabled={disabled}
-        ariaLabel={`Toggle all ${audience} visibility for current page`}
-      />
-    </form>
-  );
-}
-
-async function loadRecipes(q: string, category: string, page: number, pageSize: number) {
+async function loadRecipes(
+  q: string,
+  category: string,
+  collection: string,
+  image: string,
+  visibility: string,
+  page: number,
+  pageSize: number,
+) {
   // Recipe admin endpoints are currently protected by ADMIN_API_KEY.
   // Owner page access itself is protected by session role checks below.
   const adminApiKey = process.env.ADMIN_API_KEY;
@@ -80,6 +81,15 @@ async function loadRecipes(q: string, category: string, page: number, pageSize: 
   }
   if (category) {
     url.searchParams.set("category", category);
+  }
+  if (collection) {
+    url.searchParams.set("collection", collection);
+  }
+  if (image) {
+    url.searchParams.set("image", image);
+  }
+  if (visibility) {
+    url.searchParams.set("visibility", visibility);
   }
   url.searchParams.set("page", String(page));
   url.searchParams.set("pageSize", String(pageSize));
@@ -121,15 +131,37 @@ export default async function OwnerPage({
   const sp = await searchParams;
   const q = (pickFirstQueryParam(sp.q) ?? "").trim();
   const selectedCategory = parseCategoryFilter(pickFirstQueryParam(sp.category));
+  const selectedCollection = parseCollectionFilter(pickFirstQueryParam(sp.collection));
+  const selectedImageFilter = parseImageFilter(pickFirstQueryParam(sp.image));
+  const selectedVisibilityFilter = parseVisibilityFilter(pickFirstQueryParam(sp.visibility));
+  const includeRelated = parseIncludeRelatedFilter(pickFirstQueryParam(sp.includeRelated));
   const requestedPage = parsePageNumber(pickFirstQueryParam(sp.page));
   const requestedPageSize = parsePageSizeNumber(pickFirstQueryParam(sp.pageSize));
-  const data = await loadRecipes(q, selectedCategory, requestedPage, requestedPageSize);
+  const data = await loadRecipes(
+    q,
+    selectedCategory,
+    selectedCollection,
+    selectedImageFilter,
+    selectedVisibilityFilter,
+    requestedPage,
+    requestedPageSize,
+  );
   const activeCategory =
-    selectedCategory && data.categories.some((category) => category.name === selectedCategory)
+    selectedCategory && data.categories.some((category) => category.value === selectedCategory)
       ? selectedCategory
       : "";
   const recipes = data.items;
-  const currentPageIds = recipes.map((recipe) => recipe.id).join(",");
+  const currentOwnerHref = buildOwnerHref({
+    q,
+    category: activeCategory,
+    collection: selectedCollection,
+    image: selectedImageFilter,
+    visibility: selectedVisibilityFilter,
+    includeRelated,
+    page: data.page,
+    pageSize: data.pageSize,
+  });
+  const currentPageIds = recipes.map((recipe) => recipe.id);
   const allPublicOn = recipes.length > 0 && recipes.every((recipe) => Boolean(recipe.visibility?.public));
   const allEnterpriseOn =
     recipes.length > 0 && recipes.every((recipe) => Boolean(recipe.visibility?.enterprise));
@@ -153,9 +185,51 @@ export default async function OwnerPage({
                 Filter recipes and toggle who can access each entry.
               </CardDescription>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={buildOwnerHref({
+                  q,
+                  category: "",
+                  collection: "",
+                  image: selectedImageFilter,
+                  visibility: selectedVisibilityFilter,
+                  includeRelated,
+                  page: 1,
+                  pageSize: data.pageSize,
+                })}
+                className={buttonVariants({
+                  variant: selectedCollection ? "outline" : "secondary",
+                  size: "sm",
+                })}
+              >
+                All recipes ({data.collections.reduce((sum, item) => sum + item.count, 0)})
+              </Link>
+              {data.collections.map((collection) => (
+                <Link
+                  key={collection.name}
+                  href={buildOwnerHref({
+                    q,
+                    category: "",
+                    collection: collection.name,
+                    image: selectedImageFilter,
+                    visibility: selectedVisibilityFilter,
+                    includeRelated,
+                    page: 1,
+                    pageSize: data.pageSize,
+                  })}
+                  className={buttonVariants({
+                    variant: selectedCollection === collection.name ? "secondary" : "outline",
+                    size: "sm",
+                  })}
+                >
+                  {collection.name} ({collection.count})
+                </Link>
+              ))}
+            </div>
             <form className="space-y-3" action="/owner" method="get">
               <input type="hidden" name="page" value="1" />
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+              {selectedCollection ? <input type="hidden" name="collection" value={selectedCollection} /> : null}
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,0.75fr)] lg:items-end">
                 <div>
                   <label className="mb-2 block text-sm font-medium" htmlFor="q">
                     Search by title
@@ -168,7 +242,7 @@ export default async function OwnerPage({
                     className="bg-background/80"
                   />
                 </div>
-                <div className="sm:w-56">
+                <div>
                   <label className="mb-2 block text-sm font-medium" htmlFor="category">
                     Category
                   </label>
@@ -180,13 +254,49 @@ export default async function OwnerPage({
                   >
                     <option value="">All</option>
                     {data.categories.map((category) => (
-                      <option key={category.name} value={category.name}>
+                      <option key={category.value} value={category.value}>
                         {category.name} ({category.count})
                       </option>
                     ))}
                   </select>
                 </div>
-                <div className="sm:w-28">
+                <div>
+                  <label className="mb-2 block text-sm font-medium" htmlFor="image">
+                    Picture
+                  </label>
+                  <select
+                    id="image"
+                    name="image"
+                    defaultValue={selectedImageFilter}
+                    className="h-10 w-full rounded-md border border-input bg-background/80 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">All</option>
+                    <option value="with">Image</option>
+                    <option value="without">No image</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.75fr)_auto] lg:items-end">
+                <div>
+                  <label className="mb-2 block text-sm font-medium" htmlFor="visibility">
+                    Visibility
+                  </label>
+                  <select
+                    id="visibility"
+                    name="visibility"
+                    defaultValue={selectedVisibilityFilter}
+                    className="h-10 w-full rounded-md border border-input bg-background/80 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">All</option>
+                    <option value="public_on">Public ON</option>
+                    <option value="public_off">Public OFF</option>
+                    <option value="enterprise_on">Enterprise ON</option>
+                    <option value="enterprise_off">Enterprise OFF</option>
+                    <option value="any_on">Visible anywhere</option>
+                    <option value="both_off">Both OFF</option>
+                  </select>
+                </div>
+                <div>
                   <label className="mb-2 block text-sm font-medium" htmlFor="pageSize">
                     Per page
                   </label>
@@ -201,10 +311,20 @@ export default async function OwnerPage({
                     <option value="100">100</option>
                   </select>
                 </div>
-                <Button type="submit" className="sm:min-w-28">
+                <Button type="submit" className="lg:min-w-28">
                   Apply
                 </Button>
               </div>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  name="includeRelated"
+                  value="1"
+                  defaultChecked={includeRelated}
+                  className="h-4 w-4 rounded border-border"
+                />
+                Include related recipes when changing visibility
+              </label>
             </form>
           </CardHeader>
         </Card>
@@ -243,22 +363,26 @@ export default async function OwnerPage({
                 <th className="px-4 py-3 text-center font-medium">
                   <div className="inline-flex items-center justify-center gap-2">
                     <p>Public</p>
-                    <HeaderVisibilitySwitch
+                    <OwnerVisibilitySwitch
                       ids={currentPageIds}
                       audience="public"
                       checked={allPublicOn}
                       disabled={recipes.length === 0}
+                      includeRelated={includeRelated}
+                      ariaLabel="Toggle public visibility for all recipes on this page"
                     />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-center font-medium">
                   <div className="inline-flex items-center justify-center gap-2">
                     <p>Enterprise</p>
-                    <HeaderVisibilitySwitch
+                    <OwnerVisibilitySwitch
                       ids={currentPageIds}
                       audience="enterprise"
                       checked={allEnterpriseOn}
                       disabled={recipes.length === 0}
+                      includeRelated={includeRelated}
+                      ariaLabel="Toggle enterprise visibility for all recipes on this page"
                     />
                   </div>
                 </th>
@@ -279,44 +403,59 @@ export default async function OwnerPage({
                 return (
                   <tr key={recipe.id} className="border-t align-top">
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/recipes/${encodeURIComponent(recipe.id)}?from=owner`}
-                        className="font-medium underline-offset-4 hover:underline"
-                      >
-                        {recipe.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">RN {recipe.pluNumber}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border/70 bg-muted/40">
+                          <Image
+                            src={(recipe.imageUrl ?? "/recipe-placeholder.svg").trim() || "/recipe-placeholder.svg"}
+                            alt={recipe.title}
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <Link
+                            href={`/recipes/${encodeURIComponent(recipe.id)}?from=owner${
+                              recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""
+                            }&returnTo=${encodeURIComponent(currentOwnerHref)}`}
+                            className="link-hover font-medium"
+                          >
+                            {recipe.title}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">
+                            {recipe.collection} | RN {recipe.pluNumber}
+                          </p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {recipe.categoryPath?.[0] ?? "Uncategorised"}
+                      {recipe.categoryPath?.join(" / ") ?? "Uncategorised"}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <form action={toggleVisibilityAction} className="inline-flex">
-                        <input type="hidden" name="id" value={recipe.id} />
-                        <input type="hidden" name="audience" value="public" />
-                        <input type="hidden" name="value" value={String(!isPublic)} />
-                        <FormSubmitButton
-                          size="sm"
-                          variant={isPublic ? "success" : "outline"}
-                          pendingText="Saving..."
-                        >
-                          {isPublic ? "ON" : "OFF"}
-                        </FormSubmitButton>
-                      </form>
+                      <OwnerVisibilityButton
+                        ids={[recipe.id]}
+                        audience="public"
+                        value={!isPublic}
+                        includeRelated={includeRelated}
+                        size="sm"
+                        variant={isPublic ? "success" : "outline"}
+                        pendingText="Saving..."
+                      >
+                        {isPublic ? "ON" : "OFF"}
+                      </OwnerVisibilityButton>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <form action={toggleVisibilityAction} className="inline-flex">
-                        <input type="hidden" name="id" value={recipe.id} />
-                        <input type="hidden" name="audience" value="enterprise" />
-                        <input type="hidden" name="value" value={String(!isEnterprise)} />
-                        <FormSubmitButton
-                          size="sm"
-                          variant={isEnterprise ? "success" : "outline"}
-                          pendingText="Saving..."
-                        >
-                          {isEnterprise ? "ON" : "OFF"}
-                        </FormSubmitButton>
-                      </form>
+                      <OwnerVisibilityButton
+                        ids={[recipe.id]}
+                        audience="enterprise"
+                        value={!isEnterprise}
+                        includeRelated={includeRelated}
+                        size="sm"
+                        variant={isEnterprise ? "success" : "outline"}
+                        pendingText="Saving..."
+                      >
+                        {isEnterprise ? "ON" : "OFF"}
+                      </OwnerVisibilityButton>
                     </td>
                   </tr>
                 );
@@ -338,6 +477,10 @@ export default async function OwnerPage({
               href={buildOwnerHref({
                 q,
                 category: activeCategory,
+                collection: selectedCollection,
+                image: selectedImageFilter,
+                visibility: selectedVisibilityFilter,
+                includeRelated,
                 page: data.page - 1,
                 pageSize: data.pageSize,
               })}
@@ -378,6 +521,10 @@ export default async function OwnerPage({
                   href={buildOwnerHref({
                     q,
                     category: activeCategory,
+                    collection: selectedCollection,
+                    image: selectedImageFilter,
+                    visibility: selectedVisibilityFilter,
+                    includeRelated,
                     page: token,
                     pageSize: data.pageSize,
                   })}
@@ -394,6 +541,10 @@ export default async function OwnerPage({
               href={buildOwnerHref({
                 q,
                 category: activeCategory,
+                collection: selectedCollection,
+                image: selectedImageFilter,
+                visibility: selectedVisibilityFilter,
+                includeRelated,
                 page: data.page + 1,
                 pageSize: data.pageSize,
               })}

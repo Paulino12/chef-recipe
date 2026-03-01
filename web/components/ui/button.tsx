@@ -10,7 +10,7 @@ const buttonVariantStyles = {
   secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/85",
   outline: "border border-border bg-background hover:bg-accent hover:text-accent-foreground",
   ghost: "hover:bg-accent hover:text-accent-foreground",
-  link: "text-primary underline-offset-4 hover:underline",
+  link: "text-primary hover:bg-accent/60 hover:text-primary",
   success: "bg-emerald-600 text-white hover:bg-emerald-700",
 } as const;
 

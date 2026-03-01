@@ -4,19 +4,16 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { createClient } from "@supabase/supabase-js";
-
 import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
-
-function setAccessTokenCookie(token: string) {
-  document.cookie = `sb-access-token=${encodeURIComponent(token)}; Path=/; SameSite=Lax`;
-}
+import {
+  buildBrowserRedirectUrl,
+  createSupabaseBrowserClient,
+  isSupabaseBrowserConfigured,
+  syncServerAuthSession,
+} from "@/lib/supabase/browserClient";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -26,22 +23,14 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const supabase = useMemo(() => {
-    if (!supabaseUrl || !supabaseAnonKey) return null;
-    return createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-      },
-    });
-  }, []);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   async function handleSignUp(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setError("");
 
-    if (!supabase) {
+    if (!supabase || !isSupabaseBrowserConfigured()) {
       setError("Missing Supabase env config. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
       return;
     }
@@ -51,6 +40,9 @@ export default function SignUpPage() {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          emailRedirectTo: buildBrowserRedirectUrl("/signin?confirmed=1"),
+        },
       });
 
       if (signUpError) {
@@ -58,16 +50,15 @@ export default function SignUpPage() {
         return;
       }
 
-      const token = data.session?.access_token;
-      if (token) {
-        setAccessTokenCookie(token);
+      if (data.session?.access_token) {
+        await syncServerAuthSession(data.session);
         setMessage("Account created and signed in.");
         router.push("/recipes");
         router.refresh();
         return;
       }
 
-      setMessage("Account created. Check your email to confirm, then sign in.");
+      setMessage("Account created. Check your email to confirm your address, then return here to sign in.");
     } finally {
       setLoading(false);
     }
@@ -80,7 +71,7 @@ export default function SignUpPage() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-3xl">Create Account</CardTitle>
             <CardDescription>
-              Start as a subscriber and unlock public recipes with web billing.
+              Start as a subscriber. We will email you a confirmation link before the account is fully active.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -121,10 +112,10 @@ export default function SignUpPage() {
                 <Button type="submit" disabled={loading}>
                   {loading ? "Creating..." : "Create account"}
                 </Button>
-                <Link href="/signin" className="inline-flex items-center text-sm underline-offset-4 hover:underline">
+                <Link href="/signin" className="link-hover text-sm">
                   Already have an account?
                 </Link>
-                <Link href="/" className="inline-flex items-center text-sm underline-offset-4 hover:underline">
+                <Link href="/" className="link-hover text-sm">
                   Back to home
                 </Link>
               </div>

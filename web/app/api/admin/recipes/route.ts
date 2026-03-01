@@ -7,6 +7,7 @@ import {
   setRecipesVisibility,
 } from "@/lib/api/adminRecipes";
 import { requireApiKey } from "@/lib/api/auth";
+import { normalizeCollection } from "@/lib/recipes";
 
 function unauthorized(req: NextRequest) {
   // Current protection model for recipe admin endpoints: shared server API key.
@@ -22,11 +23,33 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
   const category = (searchParams.get("category") ?? "").trim();
+  const collection = normalizeCollection((searchParams.get("collection") ?? "").trim());
+  const imageFilterParam = (searchParams.get("image") ?? "").trim();
+  const imageFilter = imageFilterParam === "with" || imageFilterParam === "without"
+    ? imageFilterParam
+    : undefined;
+  const visibilityFilterParam = (searchParams.get("visibility") ?? "").trim();
+  const visibilityFilter =
+    visibilityFilterParam === "public_on" ||
+    visibilityFilterParam === "public_off" ||
+    visibilityFilterParam === "enterprise_on" ||
+    visibilityFilterParam === "enterprise_off" ||
+    visibilityFilterParam === "any_on" ||
+    visibilityFilterParam === "both_off"
+      ? visibilityFilterParam
+      : undefined;
   const page = Number(searchParams.get("page") ?? "1");
   const pageSize = Number(searchParams.get("pageSize") ?? "10");
 
   try {
-    const recipes = await listAdminRecipes(q, { page, pageSize, category });
+    const recipes = await listAdminRecipes(q, {
+      page,
+      pageSize,
+      category,
+      collection,
+      imageFilter,
+      visibilityFilter,
+    });
     return NextResponse.json(recipes);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load recipes";
@@ -39,6 +62,7 @@ type PatchBody = {
   ids?: unknown;
   audience?: unknown;
   value?: unknown;
+  includeRelated?: unknown;
 };
 
 export async function PATCH(req: NextRequest) {
@@ -75,9 +99,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   const validatedAudience = audience as AdminAudience;
+  const includeRelated = body.includeRelated === true;
 
   try {
-    const updated = await setRecipesVisibility(targetIds, validatedAudience, body.value);
+    const updated = await setRecipesVisibility(targetIds, validatedAudience, body.value, {
+      includeRelated,
+    });
     if (!updated.updatedIds.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     return NextResponse.json({
