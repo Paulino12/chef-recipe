@@ -6,7 +6,13 @@ import { useRouter } from "next/navigation";
 
 import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   buildBrowserRedirectUrl,
@@ -31,7 +37,9 @@ export default function SignUpPage() {
     setError("");
 
     if (!supabase || !isSupabaseBrowserConfigured()) {
-      setError("Missing Supabase env config. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+      setError(
+        "Missing Supabase env config. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+      );
       return;
     }
 
@@ -58,7 +66,9 @@ export default function SignUpPage() {
         return;
       }
 
-      setMessage("Account created. Check your email to confirm your address, then return here to sign in.");
+      setMessage(
+        "Account created. Check your email to confirm your address, then return here to sign in.",
+      );
     } finally {
       setLoading(false);
     }
@@ -71,7 +81,8 @@ export default function SignUpPage() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-3xl">Create Account</CardTitle>
             <CardDescription>
-              Start as a subscriber. We will email you a confirmation link before the account is fully active.
+              Start as a subscriber. We will email you a confirmation link
+              before the account is fully active.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -115,13 +126,12 @@ export default function SignUpPage() {
                 <Link href="/signin" className="link-hover text-sm">
                   Already have an account?
                 </Link>
-                <Link href="/" className="link-hover text-sm">
-                  Back to home
-                </Link>
               </div>
             </form>
 
-            {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+            {message ? (
+              <p className="text-sm text-emerald-700">{message}</p>
+            ) : null}
             {error ? <p className="text-sm text-red-700">{error}</p> : null}
           </CardContent>
         </Card>

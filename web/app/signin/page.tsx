@@ -30,6 +30,7 @@ export default function SignInPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const confirmed = searchParams.get("confirmed") === "1";
   const resetStatus = (searchParams.get("reset") ?? "").trim();
+  const showResendConfirmation = confirmed;
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -139,7 +140,7 @@ export default function SignInPage() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-3xl">Sign In</CardTitle>
             <CardDescription>
-              Use your verified email and password to access owner and subscriber flows.
+              Use your verified email and password to access thousands of recipes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -198,19 +199,18 @@ export default function SignInPage() {
                 >
                   {recoveryLoading ? "Sending reset..." : "Forgot password?"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={resendLoading}
-                  onClick={handleResendConfirmation}
-                >
-                  {resendLoading ? "Resending..." : "Resend confirmation"}
-                </Button>
+                {showResendConfirmation ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={resendLoading}
+                    onClick={handleResendConfirmation}
+                  >
+                    {resendLoading ? "Resending..." : "Resend confirmation"}
+                  </Button>
+                ) : null}
                 <Link href="/signup" className="link-hover text-sm">
                   Create account
-                </Link>
-                <Link href="/" className="link-hover text-sm">
-                  Back to home
                 </Link>
               </div>
             </form>
