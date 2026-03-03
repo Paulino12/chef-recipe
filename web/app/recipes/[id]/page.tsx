@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 import { PortableText } from "next-sanity";
 
 import { Badge } from "@/components/ui/badge";
+import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { MotionReveal } from "@/components/motion/reveal";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { RelatedRecipesCarousel } from "@/components/related-recipes-carousel";
 import {
   Card,
@@ -14,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FavoriteStarIcon } from "@/components/favorite-star-icon";
 import { PrintRecipeButton } from "@/components/print-recipe-button";
 import {
   extractPtnReference,
@@ -339,22 +339,17 @@ export default async function RecipePage({
               <form action={setRecipeFavoriteAction}>
                 <input type="hidden" name="recipeId" value={recipe.id} />
                 <input type="hidden" name="value" value={String(!isFavorite)} />
-                <Button
-                  type="submit"
-                  size="sm"
-                  variant="ghost"
+                <FavoriteToggleButton
+                  filled={isFavorite}
+                  label={isFavorite ? "Remove from favorites" : "Save as favorite"}
+                  pendingLabel={isFavorite ? "Removing favourite" : "Saving favourite"}
                   className={cn(
                     "h-11 w-11 overflow-visible p-0",
                     isFavorite
                       ? "text-amber-500 hover:text-amber-600"
                       : "text-muted-foreground hover:text-foreground",
                   )}
-                  aria-label={
-                    isFavorite ? "Remove from favorites" : "Save as favorite"
-                  }
-                >
-                  <FavoriteStarIcon filled={isFavorite} size={24} />
-                </Button>
+                />
               </form>
             </div>
           </div>
