@@ -1,0 +1,142 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Recipe Platform Public API",
+    "version": "1.0.0",
+    "description": "External read-only recipe discovery API for RapidAPI."
+  },
+  "servers": [
+    {
+      "url": "https://api.example.com"
+    }
+  ],
+  "paths": {
+    "/api/public/v1/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Healthy"
+          }
+        }
+      }
+    },
+    "/api/public/v1/collections": {
+      "get": {
+        "summary": "List available collections",
+        "responses": {
+          "200": {
+            "description": "Collection counts"
+          }
+        }
+      }
+    },
+    "/api/public/v1/categories": {
+      "get": {
+        "summary": "List categories",
+        "parameters": [
+          {
+            "name": "collection",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["Dining", "Hospitality"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category counts"
+          }
+        }
+      }
+    },
+    "/api/public/v1/recipes": {
+      "get": {
+        "summary": "List public recipes",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "collection",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["Dining", "Hospitality"]
+            }
+          },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "subcategory", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "include_allergens",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Comma-separated allergen slugs"
+          },
+          {
+            "name": "exclude_allergens",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Comma-separated allergen slugs"
+          },
+          { "name": "min_kcal", "in": "query", "schema": { "type": "number" } },
+          { "name": "max_kcal", "in": "query", "schema": { "type": "number" } },
+          { "name": "max_salt_g", "in": "query", "schema": { "type": "number" } },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["title", "updated_at", "rn"],
+              "default": "title"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Paginated public recipes" },
+          "400": { "description": "Invalid query" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/public/v1/recipes/{id}": {
+      "get": {
+        "summary": "Fetch a single public recipe by RN-based id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "rn_12086068"
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Recipe detail" },
+          "400": { "description": "Invalid recipe id" },
+          "404": { "description": "Recipe not found" }
+        }
+      }
+    }
+  }
+}
