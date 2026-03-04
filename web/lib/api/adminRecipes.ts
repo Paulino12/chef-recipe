@@ -249,6 +249,27 @@ function normalizeComparableText(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function consonantSignature(token: string) {
+  return token.toLowerCase().replace(/[^a-z0-9]+/g, "").replace(/[aeiou]/g, "");
+}
+
+function tokensRoughlyMatch(labelToken: string, titleToken: string) {
+  if (!labelToken || !titleToken) return false;
+  if (labelToken === titleToken) return true;
+  if (titleToken.startsWith(labelToken) || labelToken.startsWith(titleToken)) return true;
+  if (titleToken.includes(labelToken) || labelToken.includes(titleToken)) return true;
+
+  const labelSignature = consonantSignature(labelToken);
+  const titleSignature = consonantSignature(titleToken);
+  if (!labelSignature || !titleSignature) return false;
+
+  if (labelSignature === titleSignature) return true;
+  if (labelSignature.length <= 3 && titleSignature.startsWith(labelSignature)) return true;
+  if (titleSignature.length <= 3 && labelSignature.startsWith(titleSignature)) return true;
+
+  return false;
+}
+
 function scoreTitleMatch(labelNorm: string, titleNorm: string) {
   if (!labelNorm || !titleNorm) return 0;
   if (titleNorm === labelNorm) return 120;
@@ -262,10 +283,7 @@ function scoreTitleMatch(labelNorm: string, titleNorm: string) {
 
   let matched = 0;
   for (const labelToken of labelTokens) {
-    const found = titleTokens.some(
-      (titleToken) =>
-        titleToken.startsWith(labelToken) || labelToken.startsWith(titleToken),
-    );
+    const found = titleTokens.some((titleToken) => tokensRoughlyMatch(labelToken, titleToken));
     if (found) matched += 1;
   }
 

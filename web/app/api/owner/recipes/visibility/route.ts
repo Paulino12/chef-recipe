@@ -7,7 +7,6 @@ type VisibilityBody = {
   ids?: unknown;
   audience?: unknown;
   value?: unknown;
-  includeRelated?: unknown;
 };
 
 export async function POST(req: NextRequest) {
@@ -45,11 +44,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "value must be a boolean" }, { status: 400 });
   }
 
-  const includeRelated = body.includeRelated === true;
-
   try {
     const updated = await setRecipesVisibility(ids, audience as AdminAudience, body.value, {
-      includeRelated,
+      includeRelated: true,
     });
     if (!updated.updatedIds.length) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -10,7 +10,6 @@ type OwnerVisibilitySwitchProps = {
   ids: string[];
   audience: "public" | "enterprise";
   checked: boolean;
-  includeRelated?: boolean;
   disabled?: boolean;
   ariaLabel: string;
   turningOnText?: string;
@@ -30,7 +29,6 @@ export function OwnerVisibilitySwitch({
   ids,
   audience,
   checked,
-  includeRelated = false,
   disabled = false,
   ariaLabel,
   turningOnText = "Turning on...",
@@ -74,7 +72,7 @@ export function OwnerVisibilitySwitch({
               const response = await fetch("/api/owner/recipes/visibility", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({ ids, audience, value: nextState, includeRelated }),
+                body: JSON.stringify({ ids, audience, value: nextState }),
               });
 
               if (!response.ok) {

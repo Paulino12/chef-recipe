@@ -10,7 +10,6 @@ type OwnerVisibilityButtonProps = {
   ids: string[];
   audience: "public" | "enterprise";
   value: boolean;
-  includeRelated?: boolean;
   variant: ButtonVariant;
   size?: ButtonSize;
   children: string;
@@ -31,7 +30,6 @@ export function OwnerVisibilityButton({
   ids,
   audience,
   value,
-  includeRelated = false,
   variant,
   size = "sm",
   children,
@@ -57,7 +55,7 @@ export function OwnerVisibilityButton({
             const response = await fetch("/api/owner/recipes/visibility", {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ ids, audience, value, includeRelated }),
+              body: JSON.stringify({ ids, audience, value }),
             });
 
             if (!response.ok) {

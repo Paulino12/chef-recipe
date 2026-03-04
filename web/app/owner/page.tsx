@@ -17,7 +17,6 @@ import {
   buildHrefWithQuery,
   parseCategoryFilter,
   parseCollectionFilter,
-  parseIncludeRelatedFilter,
   parseImageFilter,
   parseVisibilityFilter,
   parsePageNumber,
@@ -34,7 +33,6 @@ type OwnerSearchParams = {
   collection?: string | string[];
   image?: string | string[];
   visibility?: string | string[];
-  includeRelated?: string | string[];
 };
 
 function buildOwnerHref(params: {
@@ -43,7 +41,6 @@ function buildOwnerHref(params: {
   collection: string;
   image: string;
   visibility: string;
-  includeRelated: boolean;
   page: number;
   pageSize: number;
 }) {
@@ -53,7 +50,6 @@ function buildOwnerHref(params: {
     collection: params.collection,
     image: params.image,
     visibility: params.visibility,
-    includeRelated: params.includeRelated ? "1" : undefined,
     page: params.page,
     pageSize: params.pageSize,
   });
@@ -134,7 +130,6 @@ export default async function OwnerPage({
   const selectedCollection = parseCollectionFilter(pickFirstQueryParam(sp.collection));
   const selectedImageFilter = parseImageFilter(pickFirstQueryParam(sp.image));
   const selectedVisibilityFilter = parseVisibilityFilter(pickFirstQueryParam(sp.visibility));
-  const includeRelated = parseIncludeRelatedFilter(pickFirstQueryParam(sp.includeRelated));
   const requestedPage = parsePageNumber(pickFirstQueryParam(sp.page));
   const requestedPageSize = parsePageSizeNumber(pickFirstQueryParam(sp.pageSize));
   const data = await loadRecipes(
@@ -157,7 +152,6 @@ export default async function OwnerPage({
     collection: selectedCollection,
     image: selectedImageFilter,
     visibility: selectedVisibilityFilter,
-    includeRelated,
     page: data.page,
     pageSize: data.pageSize,
   });
@@ -193,7 +187,6 @@ export default async function OwnerPage({
                   collection: "",
                   image: selectedImageFilter,
                   visibility: selectedVisibilityFilter,
-                  includeRelated,
                   page: 1,
                   pageSize: data.pageSize,
                 })}
@@ -213,7 +206,6 @@ export default async function OwnerPage({
                     collection: collection.name,
                     image: selectedImageFilter,
                     visibility: selectedVisibilityFilter,
-                    includeRelated,
                     page: 1,
                     pageSize: data.pageSize,
                   })}
@@ -315,16 +307,9 @@ export default async function OwnerPage({
                   Apply
                 </Button>
               </div>
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                <input
-                  type="checkbox"
-                  name="includeRelated"
-                  value="1"
-                  defaultChecked={includeRelated}
-                  className="h-4 w-4 rounded border-border"
-                />
-                Include related recipes when changing visibility
-              </label>
+              <p className="text-sm text-muted-foreground">
+                Visibility changes automatically apply to related recipes and sub recipes.
+              </p>
             </form>
           </CardHeader>
         </Card>
@@ -368,7 +353,6 @@ export default async function OwnerPage({
                       audience="public"
                       checked={allPublicOn}
                       disabled={recipes.length === 0}
-                      includeRelated={includeRelated}
                       ariaLabel="Toggle public visibility for all recipes on this page"
                     />
                   </div>
@@ -381,7 +365,6 @@ export default async function OwnerPage({
                       audience="enterprise"
                       checked={allEnterpriseOn}
                       disabled={recipes.length === 0}
-                      includeRelated={includeRelated}
                       ariaLabel="Toggle enterprise visibility for all recipes on this page"
                     />
                   </div>
@@ -436,7 +419,6 @@ export default async function OwnerPage({
                         ids={[recipe.id]}
                         audience="public"
                         value={!isPublic}
-                        includeRelated={includeRelated}
                         size="sm"
                         variant={isPublic ? "success" : "outline"}
                         pendingText="Saving..."
@@ -449,7 +431,6 @@ export default async function OwnerPage({
                         ids={[recipe.id]}
                         audience="enterprise"
                         value={!isEnterprise}
-                        includeRelated={includeRelated}
                         size="sm"
                         variant={isEnterprise ? "success" : "outline"}
                         pendingText="Saving..."
@@ -480,7 +461,6 @@ export default async function OwnerPage({
                 collection: selectedCollection,
                 image: selectedImageFilter,
                 visibility: selectedVisibilityFilter,
-                includeRelated,
                 page: data.page - 1,
                 pageSize: data.pageSize,
               })}
@@ -524,7 +504,6 @@ export default async function OwnerPage({
                     collection: selectedCollection,
                     image: selectedImageFilter,
                     visibility: selectedVisibilityFilter,
-                    includeRelated,
                     page: token,
                     pageSize: data.pageSize,
                   })}
@@ -544,7 +523,6 @@ export default async function OwnerPage({
                 collection: selectedCollection,
                 image: selectedImageFilter,
                 visibility: selectedVisibilityFilter,
-                includeRelated,
                 page: data.page + 1,
                 pageSize: data.pageSize,
               })}
