@@ -19,6 +19,9 @@ export type CurrentUser = {
   role: AppRole;
   subscriptionStatus: SubscriptionStatus | null;
   enterpriseGranted: boolean;
+  billingProvider: string | null;
+  hasBillingCustomer: boolean;
+  hasStripeSubscription: boolean;
 };
 
 const VALID_ROLES = new Set<AppRole>(["owner", "subscriber"]);
@@ -26,6 +29,7 @@ const VALID_STATUSES = new Set<SubscriptionStatus>([
   "trialing",
   "active",
   "past_due",
+  "paused",
   "canceled",
   "expired",
 ]);
@@ -89,6 +93,9 @@ type ProfileRow = {
 
 type SubscriptionRow = {
   status: string | null;
+  provider: string | null;
+  provider_customer_id: string | null;
+  provider_subscription_id: string | null;
 };
 
 type EntitlementRow = {
@@ -113,7 +120,11 @@ async function loadUserRows(
       .select("email,display_name,role")
       .eq("user_id", userId)
       .maybeSingle<ProfileRow>(),
-    dbClient.from("user_subscriptions").select("status").eq("user_id", userId).maybeSingle<SubscriptionRow>(),
+    dbClient
+      .from("user_subscriptions")
+      .select("status,provider,provider_customer_id,provider_subscription_id")
+      .eq("user_id", userId)
+      .maybeSingle<SubscriptionRow>(),
     dbClient
       .from("user_entitlements")
       .select("enterprise_granted")
@@ -171,6 +182,10 @@ async function getCurrentUserFromSupabase(req: NextRequest): Promise<CurrentUser
     parseSubscriptionStatus(rows.subscription?.status ?? null) ||
     (role === "subscriber" ? "trialing" : null);
   const enterpriseGranted = Boolean(rows.entitlement?.enterprise_granted);
+  const billingProvider = rows.subscription?.provider?.trim() || null;
+  const hasBillingCustomer = Boolean(rows.subscription?.provider_customer_id?.trim());
+  const hasStripeSubscription =
+    billingProvider === "stripe" && Boolean(rows.subscription?.provider_subscription_id?.trim());
 
   const email = profile?.email?.trim() || userEmail;
   if (!email) return null;
@@ -182,6 +197,9 @@ async function getCurrentUserFromSupabase(req: NextRequest): Promise<CurrentUser
     role,
     subscriptionStatus,
     enterpriseGranted,
+    billingProvider,
+    hasBillingCustomer,
+    hasStripeSubscription,
   };
 }
 
@@ -211,6 +229,9 @@ function getCurrentUserFromDev(req: NextRequest): CurrentUser | null {
     role,
     subscriptionStatus,
     enterpriseGranted,
+    billingProvider: null,
+    hasBillingCustomer: false,
+    hasStripeSubscription: false,
   };
 }
 

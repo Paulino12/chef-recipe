@@ -25,7 +25,7 @@ type ProfileSearchParams = {
 
 function statusVariant(status: string | null) {
   if (status === "active" || status === "trialing") return "success" as const;
-  if (status === "past_due") return "secondary" as const;
+  if (status === "past_due" || status === "paused") return "secondary" as const;
   return "outline" as const;
 }
 
@@ -48,7 +48,19 @@ export default async function ProfilePage({
   const success = successMessage((pickFirstQueryParam(sp.success) ?? "").trim());
 
   const isOwner = session.user.role === "owner";
-  const stripeReady = isStripeConfigured() && Boolean(process.env.STRIPE_PUBLIC_PRICE_ID?.trim());
+  const stripeConfigured = isStripeConfigured();
+  const checkoutConfigured = stripeConfigured && Boolean(process.env.STRIPE_PUBLIC_PRICE_ID?.trim());
+  const hasStripeSubscription = session.entitlements.has_stripe_subscription;
+  const hasBillingCustomer = session.entitlements.has_billing_customer;
+  const managedStripeStatus = hasStripeSubscription
+    ? session.entitlements.subscription_status
+    : null;
+  const hasManagedStripePlan =
+    managedStripeStatus === "trialing" ||
+    managedStripeStatus === "active" ||
+    managedStripeStatus === "past_due" ||
+    managedStripeStatus === "paused";
+  const canStartSubscription = !hasManagedStripePlan;
   const displayName = session.user.display_name ?? "";
 
   return (
@@ -152,23 +164,34 @@ export default async function ProfilePage({
                 Enterprise access is owner-granted and not part of the paid public subscription.
               </div>
 
-              {!stripeReady ? (
+              {!stripeConfigured ? (
                 <p className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
-                  Stripe configuration is incomplete. Set `STRIPE_SECRET_KEY` and `STRIPE_PUBLIC_PRICE_ID`.
+                  Stripe configuration is incomplete. Set `STRIPE_SECRET_KEY`.
                 </p>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  <form action={startStripeCheckoutFromProfileAction}>
-                    <FormSubmitButton pendingText="Redirecting...">
-                      Start subscription
-                    </FormSubmitButton>
-                  </form>
-                  <form action={openStripePortalFromProfileAction}>
-                    <FormSubmitButton variant="outline" pendingText="Opening...">
-                      Manage billing
-                    </FormSubmitButton>
-                  </form>
-                </div>
+                <>
+                  {!checkoutConfigured && canStartSubscription ? (
+                    <p className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
+                      Stripe checkout is not fully configured. Set `STRIPE_PUBLIC_PRICE_ID`.
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {canStartSubscription && checkoutConfigured ? (
+                      <form action={startStripeCheckoutFromProfileAction}>
+                        <FormSubmitButton pendingText="Redirecting...">
+                          Start subscription
+                        </FormSubmitButton>
+                      </form>
+                    ) : null}
+                    {hasBillingCustomer ? (
+                      <form action={openStripePortalFromProfileAction}>
+                        <FormSubmitButton variant="outline" pendingText="Opening...">
+                          Manage billing
+                        </FormSubmitButton>
+                      </form>
+                    ) : null}
+                  </div>
+                </>
               )}
 
               <Link href="/recipes" className={buttonVariants({ variant: "ghost", size: "sm" })}>

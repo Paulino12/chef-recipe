@@ -40,7 +40,13 @@ describe("POST /api/billing/stripe/webhook", () => {
       subscriptions: { retrieve: mocks.retrieveSubscription },
     });
     mocks.mapStripeStatusToAppStatus.mockImplementation((status: string) =>
-      status === "trialing" ? "trialing" : status === "active" ? "active" : "expired",
+      status === "trialing"
+        ? "trialing"
+        : status === "active"
+          ? "active"
+          : status === "paused"
+            ? "paused"
+            : "expired",
     );
     mocks.toIsoFromUnixSeconds.mockImplementation((value: number | null | undefined) => {
       if (typeof value !== "number" || value <= 0) return null;
@@ -196,6 +202,57 @@ describe("POST /api/billing/stripe/webhook", () => {
       ok: true,
       user_id: TEST_USER_ID,
       subscription_status: "past_due",
+    });
+  });
+
+  it("syncs paused status for customer.subscription.paused", async () => {
+    mocks.constructEvent.mockReturnValue({
+      id: "evt_sub_paused",
+      type: "customer.subscription.paused",
+      data: {
+        object: {
+          id: "sub_paused_1",
+          customer: "cus_paused_1",
+          status: "paused",
+          metadata: {
+            user_id: TEST_USER_ID,
+          },
+          trial_end: null,
+          current_period_end: 1_800_000_000,
+        },
+      },
+    });
+
+    const req = new NextRequest("http://localhost:3000/api/billing/stripe/webhook", {
+      method: "POST",
+      body: "{}",
+      headers: {
+        "stripe-signature": "t=1,v1=fake",
+      },
+    });
+
+    const response = await POST(req);
+    const body = (await response.json()) as {
+      ok: boolean;
+      user_id: string;
+      subscription_status: string;
+    };
+
+    expect(response.status).toBe(200);
+    expect(mocks.syncStripeSubscriptionStatus).toHaveBeenCalledWith({
+      userId: TEST_USER_ID,
+      subscriptionStatus: "paused",
+      customerId: "cus_paused_1",
+      subscriptionId: "sub_paused_1",
+      trialEndsAt: null,
+      currentPeriodEndsAt: "2027-01-15T08:00:00.000Z",
+      eventId: "evt_sub_paused",
+      eventType: "customer.subscription.paused",
+    });
+    expect(body).toEqual({
+      ok: true,
+      user_id: TEST_USER_ID,
+      subscription_status: "paused",
     });
   });
 });

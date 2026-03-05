@@ -21,14 +21,13 @@ import { cn } from "@/lib/utils";
 import {
   grantEnterpriseAction,
   revokeEnterpriseAction,
-  setSubscriptionStatusAction,
 } from "./actions";
 
 type SubscriberItem = {
   user_id: string;
   email: string;
   display_name: string | null;
-  subscription_status: "trialing" | "active" | "past_due" | "canceled" | "expired";
+  subscription_status: "trialing" | "active" | "past_due" | "paused" | "canceled" | "expired";
   enterprise_granted: boolean;
   can_view_public: boolean;
   can_view_enterprise: boolean;
@@ -52,7 +51,14 @@ type SearchParams = {
   pageSize?: string | string[];
 };
 
-const VALID_STATUSES = new Set(["trialing", "active", "past_due", "canceled", "expired"] as const);
+const VALID_STATUSES = new Set([
+  "trialing",
+  "active",
+  "past_due",
+  "paused",
+  "canceled",
+  "expired",
+] as const);
 
 function parseStatus(value?: string) {
   if (!value) return "";
@@ -204,6 +210,7 @@ export default async function OwnerSubscribersPage({
                     <option value="trialing">trialing</option>
                     <option value="active">active</option>
                     <option value="past_due">past_due</option>
+                    <option value="paused">paused</option>
                     <option value="canceled">canceled</option>
                     <option value="expired">expired</option>
                   </select>
@@ -280,27 +287,7 @@ export default async function OwnerSubscribersPage({
                     <p className="text-xs text-muted-foreground">ID {item.user_id}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="space-y-2">
-                      <Badge variant="outline">{item.subscription_status}</Badge>
-                      <form action={setSubscriptionStatusAction} className="flex items-center gap-2">
-                        <input type="hidden" name="userId" value={item.user_id} />
-                        <input type="hidden" name="reason" value="Owner dashboard set status" />
-                        <select
-                          name="status"
-                          defaultValue={item.subscription_status}
-                          className="h-8 rounded-md border border-input bg-background/80 px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        >
-                          <option value="trialing">trialing</option>
-                          <option value="active">active</option>
-                          <option value="past_due">past_due</option>
-                          <option value="canceled">canceled</option>
-                          <option value="expired">expired</option>
-                        </select>
-                        <FormSubmitButton size="sm" variant="outline" pendingText="Saving...">
-                          Set
-                        </FormSubmitButton>
-                      </form>
-                    </div>
+                    <Badge variant="outline">{item.subscription_status}</Badge>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={item.can_view_public ? "secondary" : "outline"}>

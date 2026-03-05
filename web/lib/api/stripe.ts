@@ -33,6 +33,7 @@ export function mapStripeStatusToAppStatus(
   if (status === "past_due" || status === "unpaid" || status === "incomplete") {
     return "past_due";
   }
+  if (status === "paused") return "paused";
   if (status === "canceled" || status === "incomplete_expired") {
     return "canceled";
   }

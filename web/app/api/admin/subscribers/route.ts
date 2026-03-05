@@ -8,6 +8,7 @@ const VALID_STATUSES = new Set<SubscriptionStatus>([
   "trialing",
   "active",
   "past_due",
+  "paused",
   "canceled",
   "expired",
 ]);

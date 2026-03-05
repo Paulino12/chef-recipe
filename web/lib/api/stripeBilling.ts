@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/api/supabaseAdmin";
 type AppSubscriptionRow = {
   user_id: string | null;
   status: SubscriptionStatus | null;
+  provider: string | null;
   provider_customer_id: string | null;
   provider_subscription_id: string | null;
 };
@@ -16,6 +17,7 @@ const VALID_STATUSES = new Set<SubscriptionStatus>([
   "trialing",
   "active",
   "past_due",
+  "paused",
   "canceled",
   "expired",
 ]);
@@ -40,7 +42,7 @@ export async function getBillingSubscriptionRow(userId: string) {
 
   const result = await supabaseAdmin
     .from("user_subscriptions")
-    .select("user_id,status,provider_customer_id,provider_subscription_id")
+    .select("user_id,status,provider,provider_customer_id,provider_subscription_id")
     .eq("user_id", userId)
     .maybeSingle<AppSubscriptionRow>();
 

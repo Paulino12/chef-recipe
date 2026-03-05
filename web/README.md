@@ -13,7 +13,6 @@ Web dashboard and public browsing app for the recipe platform.
 - `/signin` Supabase email/password sign-in
 - `/owner` Owner recipe visibility controls
 - `/owner/subscribers` Owner subscriber enterprise grant/revoke controls
-  and manual subscription-status controls for billing simulation
 
 ## Favorites
 
@@ -73,6 +72,7 @@ Required for Stripe billing:
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PUBLIC_PRICE_ID` (or pass `priceId` per request)
 - `STRIPE_TRIAL_DAYS` (optional, defaults to `3`)
+- `STRIPE_ALLOWED_PRICE_IDS` (optional comma-separated allowlist for override `priceId`)
 
 Optional Stripe URLs:
 

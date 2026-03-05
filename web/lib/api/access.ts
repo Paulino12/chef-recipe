@@ -4,6 +4,7 @@ export type SubscriptionStatus =
   | "trialing"
   | "active"
   | "past_due"
+  | "paused"
   | "canceled"
   | "expired";
 

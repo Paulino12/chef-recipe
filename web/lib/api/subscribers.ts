@@ -47,12 +47,6 @@ export type ListSubscribersOptions = {
   pageSize?: number;
 };
 
-export type SubscriptionStatusUpdate = {
-  user_id: string;
-  subscription_status: SubscriptionStatus;
-  updated_at: string;
-};
-
 type SupabaseEnv = {
   url: string;
   serviceRoleKey: string;
@@ -64,6 +58,7 @@ const VALID_STATUSES = new Set<SubscriptionStatus>([
   "trialing",
   "active",
   "past_due",
+  "paused",
   "canceled",
   "expired",
 ]);
@@ -209,25 +204,6 @@ function updateEnterpriseGrantDev(userId: string, enterpriseGranted: boolean) {
 
   devSubscribersStore[index] = updated;
   return toAdminSubscriber(updated);
-}
-
-function updateSubscriptionStatusDev(userId: string, status: SubscriptionStatus) {
-  const index = devSubscribersStore.findIndex((row) => row.user_id === userId);
-  if (index < 0) return null;
-
-  const current = devSubscribersStore[index];
-  const updated: SubscriberRow = {
-    ...current,
-    subscription_status: status,
-    updated_at: new Date().toISOString(),
-  };
-
-  devSubscribersStore[index] = updated;
-  return {
-    user_id: updated.user_id,
-    subscription_status: updated.subscription_status,
-    updated_at: updated.updated_at,
-  } satisfies SubscriptionStatusUpdate;
 }
 
 function isUuid(value: string | null | undefined) {
@@ -392,71 +368,6 @@ async function updateEnterpriseGrantSupabase(
   };
 }
 
-async function updateSubscriptionStatusSupabase(
-  userId: string,
-  status: SubscriptionStatus,
-  actorUserId?: string,
-  reason?: string,
-) {
-  // Owner action: set subscription status for billing simulation/testing.
-  const env = getSupabaseEnv();
-  if (!env) return null;
-  if (!isUuid(userId)) return null;
-
-  const supabase = createSupabaseAdminClient(env);
-
-  const profileResult = await supabase
-    .from("user_profiles")
-    .select("user_id")
-    .eq("user_id", userId)
-    .eq("role", "subscriber")
-    .maybeSingle<{ user_id: string | null }>();
-
-  if (profileResult.error) throw new Error(profileResult.error.message);
-  if (!profileResult.data?.user_id) return null;
-
-  const now = new Date().toISOString();
-  const trialEndsAt = status === "trialing" ? now : null;
-  const currentPeriodEndsAt = status === "trialing" || status === "active" ? now : null;
-
-  const upsertResult = await supabase
-    .from("user_subscriptions")
-    .upsert(
-      {
-        user_id: userId,
-        status,
-        trial_ends_at: trialEndsAt,
-        current_period_ends_at: currentPeriodEndsAt,
-        provider: "manual_owner",
-      },
-      { onConflict: "user_id" },
-    )
-    .select("updated_at")
-    .single<{ updated_at: string | null }>();
-
-  if (upsertResult.error) throw new Error(upsertResult.error.message);
-
-  const safeActorUserId: string | null = isUuid(actorUserId) ? (actorUserId ?? null) : null;
-  const auditResult = await supabase.from("audit_log").insert({
-    actor_user_id: safeActorUserId,
-    target_user_id: userId,
-    action: "set_subscription_status",
-    reason: reason?.trim() || null,
-    metadata: {
-      subscription_status: status,
-      provider: "manual_owner",
-    },
-  });
-
-  if (auditResult.error) throw new Error(auditResult.error.message);
-
-  return {
-    user_id: userId,
-    subscription_status: status,
-    updated_at: parseIsoOrFallback(upsertResult.data?.updated_at, now),
-  } satisfies SubscriptionStatusUpdate;
-}
-
 export async function listSubscribers(options: ListSubscribersOptions = {}) {
   // Prefer Supabase; keep deterministic dev fallback for local builds without DB wiring.
   const fromSupabase = await listSubscribersFromSupabase(options);
@@ -513,20 +424,4 @@ export async function revokeEnterpriseAccess(
   const fromSupabase = await updateEnterpriseGrantSupabase(userId, false, actorUserId, reason);
   if (fromSupabase) return fromSupabase;
   return updateEnterpriseGrantDev(userId, false);
-}
-
-export async function setSubscriptionStatus(
-  userId: string,
-  status: SubscriptionStatus,
-  reason?: string,
-  actorUserId?: string,
-) {
-  const fromSupabase = await updateSubscriptionStatusSupabase(
-    userId,
-    status,
-    actorUserId,
-    reason,
-  );
-  if (fromSupabase) return fromSupabase;
-  return updateSubscriptionStatusDev(userId, status);
 }

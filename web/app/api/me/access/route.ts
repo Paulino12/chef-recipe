@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
       enterprise_granted: user.enterpriseGranted,
       can_view_public: access.canViewPublic,
       can_view_enterprise: access.canViewEnterprise,
+      billing_provider: user.billingProvider,
+      has_billing_customer: user.hasBillingCustomer,
+      has_stripe_subscription: user.hasStripeSubscription,
     },
     computed_at: new Date().toISOString(),
   });

@@ -180,7 +180,9 @@ export async function POST(req: NextRequest) {
     if (
       event.type === "customer.subscription.created" ||
       event.type === "customer.subscription.updated" ||
-      event.type === "customer.subscription.deleted"
+      event.type === "customer.subscription.deleted" ||
+      event.type === "customer.subscription.paused" ||
+      event.type === "customer.subscription.resumed"
     ) {
       const subscription = event.data.object as Stripe.Subscription;
       const applied = await applyStripeSubscriptionSnapshot({

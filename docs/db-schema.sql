@@ -28,7 +28,7 @@ begin
     join pg_namespace n on n.oid = t.typnamespace
     where t.typname = 'subscription_status' and n.nspname = 'public'
   ) then
-    create type public.subscription_status as enum ('trialing', 'active', 'past_due', 'canceled', 'expired');
+    create type public.subscription_status as enum ('trialing', 'active', 'past_due', 'paused', 'canceled', 'expired');
   end if;
 end
 $$;
@@ -36,6 +36,7 @@ $$;
 alter type public.subscription_status add value if not exists 'trialing';
 alter type public.subscription_status add value if not exists 'active';
 alter type public.subscription_status add value if not exists 'past_due';
+alter type public.subscription_status add value if not exists 'paused';
 alter type public.subscription_status add value if not exists 'canceled';
 alter type public.subscription_status add value if not exists 'expired';
 

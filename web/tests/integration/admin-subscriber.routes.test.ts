@@ -5,7 +5,6 @@ const mocks = vi.hoisted(() => ({
   getCurrentUserFromRequest: vi.fn(),
   grantEnterpriseAccess: vi.fn(),
   revokeEnterpriseAccess: vi.fn(),
-  setSubscriptionStatus: vi.fn(),
 }));
 
 vi.mock("@/lib/api/currentUser", () => ({
@@ -15,12 +14,10 @@ vi.mock("@/lib/api/currentUser", () => ({
 vi.mock("@/lib/api/subscribers", () => ({
   grantEnterpriseAccess: mocks.grantEnterpriseAccess,
   revokeEnterpriseAccess: mocks.revokeEnterpriseAccess,
-  setSubscriptionStatus: mocks.setSubscriptionStatus,
 }));
 
 import { POST as grantEnterprisePost } from "@/app/api/admin/subscribers/[userId]/grant-enterprise/route";
 import { POST as revokeEnterprisePost } from "@/app/api/admin/subscribers/[userId]/revoke-enterprise/route";
-import { POST as setStatusPost } from "@/app/api/admin/subscribers/[userId]/set-subscription-status/route";
 
 describe("owner subscriber admin routes", () => {
   beforeEach(() => {
@@ -91,34 +88,5 @@ describe("owner subscriber admin routes", () => {
       enterprise_granted: true,
       updated_at: "2026-02-19T00:00:00.000Z",
     });
-  });
-
-  it("updates subscription status for valid owner request", async () => {
-    mocks.getCurrentUserFromRequest.mockResolvedValueOnce({
-      id: "owner-1",
-      role: "owner",
-    });
-    mocks.setSubscriptionStatus.mockResolvedValueOnce({
-      user_id: "sub-9",
-      subscription_status: "active",
-      updated_at: "2026-02-19T00:00:00.000Z",
-    });
-
-    const response = await setStatusPost(
-      new NextRequest("http://localhost:3000/api/admin/subscribers/sub-9/set-subscription-status", {
-        method: "POST",
-        body: JSON.stringify({ status: "active", reason: "billing sync" }),
-      }),
-      { params: Promise.resolve({ userId: "sub-9" }) },
-    );
-    const body = (await response.json()) as {
-      user_id: string;
-      subscription_status: string;
-      updated_at: string;
-    };
-
-    expect(response.status).toBe(200);
-    expect(mocks.setSubscriptionStatus).toHaveBeenCalledWith("sub-9", "active", "billing sync", "owner-1");
-    expect(body.subscription_status).toBe("active");
   });
 });

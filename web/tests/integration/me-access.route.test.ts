@@ -34,6 +34,9 @@ describe("GET /api/me/access", () => {
       role: "subscriber",
       subscriptionStatus: "trialing",
       enterpriseGranted: false,
+      billingProvider: null,
+      hasBillingCustomer: false,
+      hasStripeSubscription: false,
     });
 
     const response = await GET(new NextRequest("http://localhost:3000/api/me/access"));

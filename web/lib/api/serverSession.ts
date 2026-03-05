@@ -15,6 +15,9 @@ export type AccessSession = {
     enterprise_granted: boolean;
     can_view_public: boolean;
     can_view_enterprise: boolean;
+    billing_provider: string | null;
+    has_billing_customer: boolean;
+    has_stripe_subscription: boolean;
   };
   computed_at: string;
 };
