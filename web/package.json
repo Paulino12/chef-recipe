@@ -8,6 +8,8 @@
     "studio:build": "sanity build",
     "studio:deploy": "sanity deploy",
     "data:hospitality": "python scripts/generate_hospitality_dataset.py",
+    "data:costing-analysis": "python scripts/analyze_recipe_costing.py",
+    "data:costing-prototype": "python scripts/prototype_recipe_costs.py",
     "data:recipe-book-images": "python scripts/extract_recipe_book_images.py",
     "data:merge": "python scripts/merge_recipe_datasets.py",
     "data:image-shortlist": "python scripts/generate_ai_image_shortlist.py",
