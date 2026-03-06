@@ -1,8 +1,9 @@
 "use client";
 
+import * as React from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
 
 import { signOutAction } from "@/app/actions/auth";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
@@ -55,7 +56,9 @@ function navClass(isActive: boolean) {
 export function SiteHeader({ session }: SiteHeaderProps) {
   const pathname = usePathname();
   const isOwner = session?.role === "owner";
-  const hydrated = useSyncExternalStore(
+  const shouldReduceMotion = useReducedMotion();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const hydrated = React.useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
@@ -63,6 +66,97 @@ export function SiteHeader({ session }: SiteHeaderProps) {
 
   // Keep first client render identical to server HTML to avoid hydration mismatches.
   const currentPathname = hydrated ? pathname : "";
+
+  React.useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  const menuTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.24, ease: "easeOut" as const };
+
+  function renderNavItems(isMobile: boolean) {
+    const mobileItemClassName = isMobile ? "w-full justify-start" : "";
+
+    return (
+      <>
+        <Link
+          href="/recipes"
+          className={cn(navClass(isRecipesRoute(currentPathname)), mobileItemClassName)}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          All recipes
+        </Link>
+
+        {isOwner ? (
+          <Link
+            href="/owner"
+            className={cn(
+              navClass(isOwnerDashboardRoute(currentPathname)),
+              mobileItemClassName,
+            )}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Owner area
+          </Link>
+        ) : null}
+        {isOwner ? (
+          <Link
+            href="/owner/subscribers"
+            className={cn(navClass(isSubscribersRoute(currentPathname)), mobileItemClassName)}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Subscribers
+          </Link>
+        ) : null}
+        {session ? (
+          <Link
+            href="/profile"
+            className={cn(
+              navClass(
+                isProfileRoute(currentPathname) || isBillingRoute(currentPathname),
+              ),
+              mobileItemClassName,
+            )}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Profile
+          </Link>
+        ) : null}
+
+        {session ? (
+          <form action={signOutAction} className={isMobile ? "w-full" : undefined}>
+            <FormSubmitButton
+              size="sm"
+              variant="outline"
+              className={cn("cursor-pointer", mobileItemClassName)}
+              pendingText="Signing out..."
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Sign out
+            </FormSubmitButton>
+          </form>
+        ) : (
+          <Link
+            href="/signin"
+            className={cn(
+              buttonVariants({
+                variant:
+                  currentPathname === "/signin" || currentPathname === "/signup"
+                    ? "secondary"
+                    : "default",
+                size: "sm",
+              }),
+              isMobile ? "w-full justify-start" : "min-w-20",
+            )}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Sign in
+          </Link>
+        )}
+      </>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur print:hidden">
@@ -78,68 +172,69 @@ export function SiteHeader({ session }: SiteHeaderProps) {
           ) : null}
         </div>
 
-        <nav className="flex flex-wrap items-center gap-2">
-          <Link href="/recipes" className={navClass(isRecipesRoute(currentPathname))}>
-            All recipes
-          </Link>
-
-          {isOwner ? (
-            <Link
-              href="/owner"
-              className={navClass(isOwnerDashboardRoute(currentPathname))}
-            >
-              Owner area
-            </Link>
-          ) : null}
-          {isOwner ? (
-            <Link
-              href="/owner/subscribers"
-              className={navClass(isSubscribersRoute(currentPathname))}
-            >
-              Subscribers
-            </Link>
-          ) : null}
-          {session ? (
-            <Link
-              href="/profile"
-              className={navClass(
-                isProfileRoute(currentPathname) || isBillingRoute(currentPathname),
-              )}
-            >
-              Profile
-            </Link>
-          ) : null}
-
-          {session ? (
-            <form action={signOutAction}>
-              <FormSubmitButton
-                size="sm"
-                variant="outline"
-                className="cursor-pointer"
-                pendingText="Signing out..."
-              >
-                Sign out
-              </FormSubmitButton>
-            </form>
-          ) : (
-            <Link
-              href="/signin"
-              className={cn(
-                buttonVariants({
-                  variant:
-                    currentPathname === "/signin" || currentPathname === "/signup"
-                      ? "secondary"
-                      : "default",
-                  size: "sm",
-                }),
-                "min-w-20",
-              )}
-            >
-              Sign in
-            </Link>
-          )}
+        <nav className="hidden flex-wrap items-center gap-2 md:flex">
+          {renderNavItems(false)}
         </nav>
+
+        <button
+          type="button"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "relative h-9 md:hidden",
+          )}
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-site-nav"
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+        >
+          <span className="relative block h-4 w-5">
+            <motion.span
+              className="absolute left-0 block h-0.5 w-5 rounded-full bg-foreground"
+              animate={mobileMenuOpen ? { top: 7, rotate: 45 } : { top: 0, rotate: 0 }}
+              transition={menuTransition}
+            />
+            <motion.span
+              className="absolute left-0 top-[7px] block h-0.5 w-5 rounded-full bg-foreground"
+              animate={mobileMenuOpen ? { opacity: 0 } : { opacity: 1 }}
+              transition={menuTransition}
+            />
+            <motion.span
+              className="absolute left-0 block h-0.5 w-5 rounded-full bg-foreground"
+              animate={mobileMenuOpen ? { top: 7, rotate: -45 } : { top: 14, rotate: 0 }}
+              transition={menuTransition}
+            />
+          </span>
+          <span className="sr-only">{mobileMenuOpen ? "Close menu" : "Open menu"}</span>
+        </button>
       </div>
+
+      <AnimatePresence initial={false}>
+        {mobileMenuOpen ? (
+          <motion.nav
+            id="mobile-site-nav"
+            className="overflow-hidden border-t border-border/70 md:hidden"
+            initial={
+              shouldReduceMotion
+                ? { opacity: 1, height: "auto" }
+                : { opacity: 0, height: 0 }
+            }
+            animate={{ opacity: 1, height: "auto" }}
+            exit={
+              shouldReduceMotion ? { opacity: 1, height: 0 } : { opacity: 0, height: 0 }
+            }
+            transition={menuTransition}
+          >
+            <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 pb-4 pt-3 sm:px-6">
+              {session ? (
+                <span className="rounded-full border border-border/70 bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">
+                  Hey, {session.display_name || session.email}
+                </span>
+              ) : null}
+              {renderNavItems(true)}
+            </div>
+          </motion.nav>
+        ) : null}
+      </AnimatePresence>
     </header>
   );
 }
