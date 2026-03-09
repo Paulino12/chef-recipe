@@ -47,6 +47,17 @@ export type ListSubscribersOptions = {
   pageSize?: number;
 };
 
+export type SubscriberStatusUpdate = {
+  user_id: string;
+  subscription_status: SubscriptionStatus;
+  updated_at: string;
+};
+
+export type SubscriberDeleteResult = {
+  user_id: string;
+  deleted: boolean;
+};
+
 type SupabaseEnv = {
   url: string;
   serviceRoleKey: string;
@@ -204,6 +215,36 @@ function updateEnterpriseGrantDev(userId: string, enterpriseGranted: boolean) {
 
   devSubscribersStore[index] = updated;
   return toAdminSubscriber(updated);
+}
+
+function updateSubscriptionStatusDev(
+  userId: string,
+  subscriptionStatus: SubscriptionStatus,
+): SubscriberStatusUpdate | null {
+  const index = devSubscribersStore.findIndex((row) => row.user_id === userId);
+  if (index < 0) return null;
+
+  const current = devSubscribersStore[index];
+  const updated: SubscriberRow = {
+    ...current,
+    subscription_status: subscriptionStatus,
+    enterprise_granted: subscriptionStatus === "expired" ? false : current.enterprise_granted,
+    updated_at: new Date().toISOString(),
+  };
+
+  devSubscribersStore[index] = updated;
+  return {
+    user_id: updated.user_id,
+    subscription_status: updated.subscription_status,
+    updated_at: updated.updated_at,
+  };
+}
+
+function deleteSubscriberDev(userId: string): SubscriberDeleteResult | null {
+  const index = devSubscribersStore.findIndex((row) => row.user_id === userId);
+  if (index < 0) return null;
+  devSubscribersStore.splice(index, 1);
+  return { user_id: userId, deleted: true };
 }
 
 function isUuid(value: string | null | undefined) {
@@ -368,6 +409,129 @@ async function updateEnterpriseGrantSupabase(
   };
 }
 
+async function updateSubscriptionStatusSupabase(
+  userId: string,
+  subscriptionStatus: SubscriptionStatus,
+  actorUserId?: string,
+  reason?: string,
+) {
+  const env = getSupabaseEnv();
+  if (!env) return null;
+  if (!isUuid(userId)) return null;
+
+  const supabase = createSupabaseAdminClient(env);
+  const now = new Date().toISOString();
+
+  const profileResult = await supabase
+    .from("user_profiles")
+    .select("user_id,email")
+    .eq("user_id", userId)
+    .eq("role", "subscriber")
+    .maybeSingle<{ user_id: string | null; email: string | null }>();
+
+  if (profileResult.error) throw new Error(profileResult.error.message);
+  if (!profileResult.data?.user_id) return null;
+
+  const subscriptionResult = await supabase
+    .from("user_subscriptions")
+    .upsert(
+      {
+        user_id: userId,
+        status: subscriptionStatus,
+      },
+      { onConflict: "user_id" },
+    )
+    .select("updated_at")
+    .single<{ updated_at: string | null }>();
+
+  if (subscriptionResult.error) throw new Error(subscriptionResult.error.message);
+
+  if (subscriptionStatus === "expired") {
+    const entitlementResult = await supabase
+      .from("user_entitlements")
+      .upsert(
+        {
+          user_id: userId,
+          enterprise_granted: false,
+          granted_by: null,
+          granted_at: null,
+        },
+        { onConflict: "user_id" },
+      );
+    if (entitlementResult.error) throw new Error(entitlementResult.error.message);
+  }
+
+  const safeActorUserId: string | null = isUuid(actorUserId) ? (actorUserId ?? null) : null;
+  const auditResult = await supabase.from("audit_log").insert({
+    actor_user_id: safeActorUserId,
+    target_user_id: userId,
+    action: "set_subscription_status",
+    reason: reason?.trim() || null,
+    metadata: {
+      subscription_status: subscriptionStatus,
+      enterprise_granted: subscriptionStatus === "expired" ? false : undefined,
+    },
+  });
+
+  if (auditResult.error) throw new Error(auditResult.error.message);
+
+  return {
+    user_id: userId,
+    subscription_status: subscriptionStatus,
+    updated_at: parseIsoOrFallback(subscriptionResult.data?.updated_at, now),
+  };
+}
+
+async function deleteSubscriberSupabase(
+  userId: string,
+  actorUserId?: string,
+  reason?: string,
+) {
+  const env = getSupabaseEnv();
+  if (!env) return null;
+  if (!isUuid(userId)) return null;
+
+  const supabase = createSupabaseAdminClient(env);
+
+  const profileResult = await supabase
+    .from("user_profiles")
+    .select("user_id,email,role")
+    .eq("user_id", userId)
+    .eq("role", "subscriber")
+    .maybeSingle<{ user_id: string | null; email: string | null; role: string | null }>();
+
+  if (profileResult.error) throw new Error(profileResult.error.message);
+  if (!profileResult.data?.user_id) return null;
+
+  // These references do not cascade from auth.users, so clear them before deleting auth user.
+  const grantedByCleanup = await supabase
+    .from("user_entitlements")
+    .update({ granted_by: null })
+    .eq("granted_by", userId);
+  if (grantedByCleanup.error) throw new Error(grantedByCleanup.error.message);
+
+  const auditActorCleanup = await supabase
+    .from("audit_log")
+    .update({ actor_user_id: null })
+    .eq("actor_user_id", userId);
+  if (auditActorCleanup.error) throw new Error(auditActorCleanup.error.message);
+
+  const auditTargetCleanup = await supabase
+    .from("audit_log")
+    .update({ target_user_id: null })
+    .eq("target_user_id", userId);
+  if (auditTargetCleanup.error) throw new Error(auditTargetCleanup.error.message);
+
+  // Keep a lightweight trace on the owner side without depending on a constrained audit action enum.
+  void actorUserId;
+  void reason;
+
+  const deleteResult = await supabase.auth.admin.deleteUser(userId);
+  if (deleteResult.error) throw new Error(deleteResult.error.message);
+
+  return { user_id: userId, deleted: true };
+}
+
 export async function listSubscribers(options: ListSubscribersOptions = {}) {
   // Prefer Supabase; keep deterministic dev fallback for local builds without DB wiring.
   const fromSupabase = await listSubscribersFromSupabase(options);
@@ -424,4 +588,30 @@ export async function revokeEnterpriseAccess(
   const fromSupabase = await updateEnterpriseGrantSupabase(userId, false, actorUserId, reason);
   if (fromSupabase) return fromSupabase;
   return updateEnterpriseGrantDev(userId, false);
+}
+
+export async function setSubscriberSubscriptionStatus(
+  userId: string,
+  subscriptionStatus: SubscriptionStatus,
+  reason?: string,
+  actorUserId?: string,
+) {
+  const fromSupabase = await updateSubscriptionStatusSupabase(
+    userId,
+    subscriptionStatus,
+    actorUserId,
+    reason,
+  );
+  if (fromSupabase) return fromSupabase;
+  return updateSubscriptionStatusDev(userId, subscriptionStatus);
+}
+
+export async function deleteSubscriber(
+  userId: string,
+  reason?: string,
+  actorUserId?: string,
+) {
+  const fromSupabase = await deleteSubscriberSupabase(userId, actorUserId, reason);
+  if (fromSupabase) return fromSupabase;
+  return deleteSubscriberDev(userId);
 }

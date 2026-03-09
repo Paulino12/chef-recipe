@@ -3,12 +3,14 @@ import { redirect } from "next/navigation";
 
 import { MotionReveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { getInternalApiOrigin } from "@/lib/api/origin";
 import { buildCompactPagination } from "@/lib/pagination";
+import { formatAccessStatusLabel } from "@/lib/billing";
 import { getForwardAuthHeaders, getServerAccessSession } from "@/lib/api/serverSession";
 import {
   buildHrefWithQuery,
@@ -19,8 +21,11 @@ import {
 import { cn } from "@/lib/utils";
 
 import {
+  deleteSubscriberAction,
   grantEnterpriseAction,
+  restoreSubscriberAccessAction,
   revokeEnterpriseAction,
+  suspendSubscriberAccessAction,
 } from "./actions";
 
 type SubscriberItem = {
@@ -86,12 +91,6 @@ function buildHref(params: {
     page: params.page,
     pageSize: params.pageSize,
   });
-}
-
-function formatUpdatedAtUtc(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "unknown";
-  return parsed.toISOString().replace("T", " ").slice(0, 16) + " UTC";
 }
 
 async function loadSubscribers(
@@ -178,7 +177,7 @@ export default async function OwnerSubscribersPage({
             <div className="space-y-2">
               <CardTitle className="text-3xl">Owner Subscriber Management</CardTitle>
               <CardDescription>
-                Control enterprise access and review effective permissions.
+                Control enterprise access and review effective permissions while billing is paused in the UI.
               </CardDescription>
             </div>
             <form className="space-y-3" action="/owner/subscribers" method="get">
@@ -198,7 +197,7 @@ export default async function OwnerSubscribersPage({
                 </div>
                 <div className="md:w-44">
                   <label className="mb-2 block text-sm font-medium" htmlFor="status">
-                    Subscription
+                    Access status
                   </label>
                   <select
                     id="status"
@@ -265,16 +264,17 @@ export default async function OwnerSubscribersPage({
             <thead className="bg-muted/40 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Subscriber</th>
-                <th className="px-4 py-3 font-medium">Subscription</th>
+                <th className="px-4 py-3 font-medium">Access status</th>
                 <th className="px-4 py-3 font-medium">Public Access</th>
                 <th className="px-4 py-3 font-medium">Enterprise Access</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+                <th className="px-4 py-3 font-medium">Recipe Access</th>
+                <th className="px-4 py-3 font-medium">User Actions</th>
               </tr>
             </thead>
             <tbody>
               {data.items.length === 0 ? (
                 <tr className="border-t">
-                  <td className="px-4 py-10 text-center text-muted-foreground" colSpan={5}>
+                  <td className="px-4 py-10 text-center text-muted-foreground" colSpan={6}>
                     No subscribers found.
                   </td>
                 </tr>
@@ -287,7 +287,10 @@ export default async function OwnerSubscribersPage({
                     <p className="text-xs text-muted-foreground">ID {item.user_id}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="outline">{item.subscription_status}</Badge>
+                    <Badge variant="outline">{formatAccessStatusLabel(item.subscription_status)}</Badge>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Stored as: {item.subscription_status}
+                    </p>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={item.can_view_public ? "secondary" : "outline"}>
@@ -325,9 +328,47 @@ export default async function OwnerSubscribersPage({
                         </FormSubmitButton>
                       </form>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Updated {formatUpdatedAtUtc(item.updated_at)}
-                    </p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <form action={restoreSubscriberAccessAction}>
+                        <input type="hidden" name="userId" value={item.user_id} />
+                        <input type="hidden" name="reason" value="Owner dashboard restore access" />
+                        <FormSubmitButton
+                          size="sm"
+                          variant={item.subscription_status === "trialing" ? "success" : "outline"}
+                          pendingText="Saving..."
+                        >
+                          Restore
+                        </FormSubmitButton>
+                      </form>
+
+                      <form action={suspendSubscriberAccessAction}>
+                        <input type="hidden" name="userId" value={item.user_id} />
+                        <input type="hidden" name="reason" value="Owner dashboard suspend access" />
+                        <FormSubmitButton
+                          size="sm"
+                          variant={item.subscription_status === "expired" ? "success" : "outline"}
+                          pendingText="Saving..."
+                        >
+                          Suspend
+                        </FormSubmitButton>
+                      </form>
+
+                      <form action={deleteSubscriberAction}>
+                        <input type="hidden" name="userId" value={item.user_id} />
+                        <input type="hidden" name="reason" value="Owner dashboard delete subscriber" />
+                        <ConfirmSubmitButton
+                          size="sm"
+                          variant="outline"
+                          pendingText="Deleting..."
+                          confirmMessage={`Delete ${item.display_name?.trim() || item.email}? This permanently removes the user account and linked access records.`}
+                          className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800"
+                        >
+                          Delete user
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               ))}

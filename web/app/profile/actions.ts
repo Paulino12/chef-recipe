@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { isBillingUiEnabled } from "@/lib/billing";
 import { getInternalApiOrigin } from "@/lib/api/origin";
 import { getForwardAuthHeaders, getServerAccessSession } from "@/lib/api/serverSession";
 
@@ -100,6 +101,9 @@ export async function sendPasswordResetAction() {
 export async function startStripeCheckoutFromProfileAction(formData: FormData) {
   const session = await getServerAccessSession();
   if (!session) redirect("/signin?next=%2Fprofile");
+  if (!isBillingUiEnabled()) {
+    redirect("/profile?error=Billing%20is%20currently%20paused.");
+  }
 
   const rawPriceId = String(formData.get("priceId") ?? "").trim();
   const authHeaders = await getForwardAuthHeaders();
@@ -139,6 +143,9 @@ export async function startStripeCheckoutFromProfileAction(formData: FormData) {
 export async function openStripePortalFromProfileAction() {
   const session = await getServerAccessSession();
   if (!session) redirect("/signin?next=%2Fprofile");
+  if (!isBillingUiEnabled()) {
+    redirect("/profile?error=Billing%20is%20currently%20paused.");
+  }
 
   const authHeaders = await getForwardAuthHeaders();
   const endpoint = new URL("/api/billing/stripe/portal-session", getInternalApiOrigin()).toString();

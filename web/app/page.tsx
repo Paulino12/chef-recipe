@@ -43,28 +43,41 @@ export default async function HomePage() {
                   className="rounded-[1.6rem] border border-border/70 bg-background/80 p-5 shadow-lg shadow-black/5 backdrop-blur sm:p-6"
                 >
                   <div className="mb-3 flex items-center gap-2">
-                    <Badge variant="secondary">Pricing</Badge>
-                    <Badge variant="outline">Public Recipes</Badge>
+                    <Badge variant="secondary">Access</Badge>
+                    <Badge variant="outline">Sign Up Securely</Badge>
                   </div>
                   <h2 className="text-2xl font-semibold sm:text-3xl">
-                    GBP 4.95 / month after a 3-day free trial
+                    {session
+                      ? "Your account is ready to browse recipes"
+                      : "Sign up and start browsing approved recipes"}
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
-                    Includes access to public recipes. Cancel anytime, including during trial.
+                    {session
+                      ? "Public recipes are available in your account, and any extra enterprise recipes are granted by the development chefs."
+                      : "Public recipes are available after sign up, and enterprise recipes are granted from the owner area."}
                   </p>
                   <div className="mt-5 flex flex-wrap gap-2">
                     {session ? (
                       <>
-                        <Link href="/profile" className={buttonVariants({ variant: "default" })}>
-                          Manage plan in profile
+                        <Link
+                          href="/profile"
+                          className={buttonVariants({ variant: "default" })}
+                        >
+                          Open profile
                         </Link>
-                        <Link href="/recipes" className={buttonVariants({ variant: "outline" })}>
+                        <Link
+                          href="/recipes"
+                          className={buttonVariants({ variant: "outline" })}
+                        >
                           Browse recipes
                         </Link>
                       </>
                     ) : (
-                      <Link href="/signup" className={buttonVariants({ variant: "default" })}>
-                        Start a free trial
+                      <Link
+                        href="/signup"
+                        className={buttonVariants({ variant: "default" })}
+                      >
+                        Create account
                       </Link>
                     )}
                   </div>
@@ -95,7 +108,8 @@ export default async function HomePage() {
                         Member preview
                       </p>
                       <p className="mt-2 max-w-sm text-sm leading-6 text-stone-100/90 sm:text-base">
-                        A recipe library designed to feel collected, practical, and worth returning to.
+                        A recipe library designed to feel collected, practical,
+                        and worth returning to.
                       </p>
                     </div>
                   </div>

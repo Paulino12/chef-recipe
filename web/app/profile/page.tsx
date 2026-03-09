@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
-import { isStripeConfigured } from "@/lib/api/stripe";
+import { formatAccessStatusLabel, isBillingUiEnabled } from "@/lib/billing";
 import { getServerAccessSession } from "@/lib/api/serverSession";
 import { pickFirstQueryParam } from "@/lib/searchParams";
 
@@ -48,8 +48,9 @@ export default async function ProfilePage({
   const success = successMessage((pickFirstQueryParam(sp.success) ?? "").trim());
 
   const isOwner = session.user.role === "owner";
-  const stripeConfigured = isStripeConfigured();
-  const checkoutConfigured = stripeConfigured && Boolean(process.env.STRIPE_PUBLIC_PRICE_ID?.trim());
+  const billingUiEnabled = isBillingUiEnabled();
+  const stripeConfigured = billingUiEnabled && Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+  const checkoutConfigured = billingUiEnabled && Boolean(process.env.STRIPE_PUBLIC_PRICE_ID?.trim());
   const hasStripeSubscription = session.entitlements.has_stripe_subscription;
   const hasBillingCustomer = session.entitlements.has_billing_customer;
   const managedStripeStatus = hasStripeSubscription
@@ -149,30 +150,31 @@ export default async function ProfilePage({
             <Card className="surface-panel border-white/40">
             <CardHeader className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">Billing</Badge>
+                <Badge variant="secondary">Access</Badge>
                 <Badge variant={statusVariant(session.entitlements.subscription_status)}>
-                  Status: {session.entitlements.subscription_status ?? "none"}
+                  Status: {formatAccessStatusLabel(session.entitlements.subscription_status)}
                 </Badge>
               </div>
-              <CardTitle className="text-2xl">Public recipes plan</CardTitle>
+              <CardTitle className="text-2xl">Recipe access</CardTitle>
               <CardDescription>
-                GBP 4.95 / month after 3-day free trial. Cancel anytime, including during trial.
+                Access is managed directly in the app and updated as your permissions change.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="rounded-lg border border-border/70 bg-background/70 p-3 text-sm text-muted-foreground">
-                Enterprise access is owner-granted and not part of the paid public subscription.
+                Public access is currently granted on sign up. Enterprise access is owner-granted.
               </div>
 
-              {!stripeConfigured ? (
+              {billingUiEnabled && !stripeConfigured ? (
                 <p className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
-                  Stripe configuration is incomplete. Set `STRIPE_SECRET_KEY`.
+                  Online payments are not fully configured yet.
                 </p>
               ) : (
+                billingUiEnabled ? (
                 <>
                   {!checkoutConfigured && canStartSubscription ? (
                     <p className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
-                      Stripe checkout is not fully configured. Set `STRIPE_PUBLIC_PRICE_ID`.
+                      Online payments are not fully configured yet.
                     </p>
                   ) : null}
                   <div className="flex flex-wrap gap-2">
@@ -192,6 +194,7 @@ export default async function ProfilePage({
                     ) : null}
                   </div>
                 </>
+                ) : null
               )}
 
               <Link href="/recipes" className={buttonVariants({ variant: "ghost", size: "sm" })}>

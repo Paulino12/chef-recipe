@@ -140,14 +140,14 @@ export default async function RecipesPage({
       <main className="mx-auto max-w-5xl px-4 pb-16 pt-8 sm:px-6">
         <Card className="surface-panel border-white/40">
           <CardHeader>
-            <CardTitle className="text-3xl">Subscription required</CardTitle>
+            <CardTitle className="text-3xl">Access required</CardTitle>
             <CardDescription>
-              Your account does not currently have recipe access. Start or manage your subscription from profile.
+              Your account does not currently have recipe access. Open your profile or contact the owner to enable enterprise access.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Link href="/profile" className={buttonVariants({ variant: "default" })}>
-              Open profile and billing
+              Open profile
             </Link>
           </CardContent>
         </Card>
