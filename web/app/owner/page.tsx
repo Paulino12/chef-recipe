@@ -11,7 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { type AdminRecipesResult } from "@/lib/api/adminRecipes";
 import { getInternalApiOrigin } from "@/lib/api/origin";
+import { listRecipeCostingSummariesByIds } from "@/lib/api/recipeCostings";
 import { buildCompactPagination } from "@/lib/pagination";
+import { formatRecipeCostMoney } from "@/lib/recipeCosting";
 import { getServerAccessSession } from "@/lib/api/serverSession";
 import {
   buildHrefWithQuery,
@@ -146,6 +148,16 @@ export default async function OwnerPage({
       ? selectedCategory
       : "";
   const recipes = data.items;
+  let recipeCostingSummaries = {} as Awaited<
+    ReturnType<typeof listRecipeCostingSummariesByIds>
+  >;
+  try {
+    recipeCostingSummaries = await listRecipeCostingSummariesByIds(
+      recipes.map((recipe) => recipe.id),
+    );
+  } catch {
+    recipeCostingSummaries = {};
+  }
   const currentOwnerHref = buildOwnerHref({
     q,
     category: activeCategory,
@@ -382,6 +394,15 @@ export default async function OwnerPage({
               {recipes.map((recipe) => {
                 const isPublic = Boolean(recipe.visibility?.public);
                 const isEnterprise = Boolean(recipe.visibility?.enterprise);
+                const recipeCostingSummary = recipeCostingSummaries[recipe.id];
+                const costingLabel = recipeCostingSummary
+                  ? recipeCostingSummary.costPerPortion !== null
+                    ? `${formatRecipeCostMoney(
+                        recipeCostingSummary.costPerPortion,
+                        recipeCostingSummary.currency,
+                      )}/portion`
+                    : "Costed"
+                  : "";
 
                 return (
                   <tr key={recipe.id} className="border-t align-top">
@@ -407,6 +428,7 @@ export default async function OwnerPage({
                           </Link>
                           <p className="text-xs text-muted-foreground">
                             {recipe.collection} | RN {recipe.pluNumber}
+                            {costingLabel ? ` | ${costingLabel}` : ""}
                           </p>
                         </div>
                       </div>

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -188,15 +189,18 @@ export default function SignInPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading} aria-busy={loading || undefined}>
+                  {loading ? <ButtonSpinner /> : null}
                   {loading ? "Signing in..." : "Sign in"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   disabled={recoveryLoading}
+                  aria-busy={recoveryLoading || undefined}
                   onClick={handleForgotPassword}
                 >
+                  {recoveryLoading ? <ButtonSpinner /> : null}
                   {recoveryLoading ? "Sending reset..." : "Forgot password?"}
                 </Button>
                 {showResendConfirmation ? (
@@ -204,8 +208,10 @@ export default function SignInPage() {
                     type="button"
                     variant="ghost"
                     disabled={resendLoading}
+                    aria-busy={resendLoading || undefined}
                     onClick={handleResendConfirmation}
                   >
+                    {resendLoading ? <ButtonSpinner /> : null}
                     {resendLoading ? "Resending..." : "Resend confirmation"}
                   </Button>
                 ) : null}

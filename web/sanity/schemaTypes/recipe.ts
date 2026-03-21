@@ -1,4 +1,8 @@
-﻿import { defineField, defineType } from "sanity";
+import { defineField, defineType } from "sanity";
+
+import { apiVersion } from "../env";
+import { RecipeCategoryPathInput } from "../components/recipe-category-path-input";
+import { fetchNextRecipeNumber, hasDuplicateRecipeNumber } from "../lib/recipeMetadata";
 
 const WORKFLOW_STATUS_OPTIONS = [
   { title: "Intake", value: "intake" },
@@ -76,7 +80,23 @@ export const recipe = defineType({
       title: "RN (Recipe Number)",
       type: "number",
       group: "basics",
-      validation: (R) => R.required().integer().positive(),
+      description: "Prefills with the next available RN in the current 12xxxxxx sequence.",
+      initialValue: async (_, context) => fetchNextRecipeNumber(context.getClient({ apiVersion })),
+      validation: (Rule) =>
+        Rule.required()
+          .integer()
+          .positive()
+          .custom(async (value, context) => {
+            if (typeof value !== "number") return true;
+
+            const hasDuplicate = await hasDuplicateRecipeNumber(
+              context.getClient({ apiVersion }),
+              value,
+              typeof context.document?._id === "string" ? context.document._id : undefined,
+            );
+
+            return hasDuplicate ? "This RN is already in use by another recipe." : true;
+          }),
     }),
     defineField({
       name: "title",
@@ -105,7 +125,11 @@ export const recipe = defineType({
       title: "Category path",
       type: "array",
       group: "basics",
+      description: "Choose an existing category path when possible to avoid duplicates.",
       of: [{ type: "string" }],
+      components: {
+        input: RecipeCategoryPathInput,
+      },
     }),
     defineField({
       name: "portions",

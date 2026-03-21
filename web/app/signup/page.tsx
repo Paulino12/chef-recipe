@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
   Card,
   CardContent,
@@ -120,7 +121,8 @@ export default function SignUpPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading} aria-busy={loading || undefined}>
+                  {loading ? <ButtonSpinner /> : null}
                   {loading ? "Creating..." : "Create account"}
                 </Button>
                 <Link href="/signin" className="link-hover text-sm">

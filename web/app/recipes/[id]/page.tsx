@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { PortableText } from "next-sanity";
+import { EditIcon } from "@sanity/icons";
 
 import { Badge } from "@/components/ui/badge";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
@@ -16,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PrintRecipeButton } from "@/components/print-recipe-button";
+import { getRecipeCostSummary } from "@/lib/api/recipeCostings";
 import {
   extractPtnReference,
   findSubRecipeTargets,
@@ -27,6 +29,7 @@ import {
 } from "@/lib/recipes";
 import { getFavoriteIdsFromCookieStore } from "@/lib/api/favoriteCookie";
 import { listRecipeFavoriteIds } from "@/lib/api/favorites";
+import { formatRecipeCostMoney } from "@/lib/recipeCosting";
 import { getServerAccessSession } from "@/lib/api/serverSession";
 import { pickFirstQueryParam } from "@/lib/searchParams";
 import { cn } from "@/lib/utils";
@@ -39,6 +42,7 @@ type RecipeDetailSearchParams = {
   favorites?: string | string[];
   collection?: string | string[];
   returnTo?: string | string[];
+  costing?: string | string[];
 };
 
 function parseAudience(value?: string): RecipeAudienceFilter | null {
@@ -98,6 +102,24 @@ function resolveReturnTo(value?: string) {
   if (!next.startsWith("/")) return null;
   if (next.startsWith("//")) return null;
   return next;
+}
+
+function buildRecipeDetailReturnHref(options: {
+  recipeId: string;
+  audience: RecipeAudienceFilter;
+  favoritesOnly: boolean;
+  collection: string;
+  returnTo: string | null;
+  from: string;
+}) {
+  const params = new URLSearchParams();
+  params.set("audience", options.audience);
+  if (options.favoritesOnly) params.set("favorites", "1");
+  if (options.collection) params.set("collection", options.collection);
+  if (options.returnTo) params.set("returnTo", options.returnTo);
+  if (options.from) params.set("from", options.from);
+  const query = params.toString();
+  return `/recipes/${encodeURIComponent(options.recipeId)}${query ? `?${query}` : ""}`;
 }
 
 function relatedReasonLabel(reason: "subrecipe" | "favorite" | "category") {
@@ -180,6 +202,31 @@ export default async function RecipePage({
     ...(await listRecipeFavoriteIds(session.user.id)),
   ]);
   const isFavorite = favoriteIds.has(recipe.id);
+  const recipeDetailReturnHref = buildRecipeDetailReturnHref({
+    recipeId: recipe.id,
+    audience,
+    favoritesOnly,
+    collection,
+    returnTo,
+    from,
+  });
+  const costingHref = `/owner/costing/${encodeURIComponent(recipe.id)}?returnTo=${encodeURIComponent(
+    recipeDetailReturnHref,
+  )}`;
+
+  let recipeCostSummary: Awaited<ReturnType<typeof getRecipeCostSummary>> =
+    null;
+  let costingUnavailableReason = "";
+  if (isOwner) {
+    try {
+      recipeCostSummary = await getRecipeCostSummary(recipe);
+    } catch (error) {
+      costingUnavailableReason =
+        error instanceof Error
+          ? error.message
+          : "Recipe costing is unavailable.";
+    }
+  }
 
   const method = recipe.method as unknown as
     | Array<{ _type?: string; [key: string]: unknown }>
@@ -294,10 +341,12 @@ export default async function RecipePage({
           returnTo
             ? returnTo
             : isOwner && from === "owner"
-            ? `/owner${collection ? `?collection=${encodeURIComponent(collection)}` : ""}`
-            : `/recipes?audience=${encodeURIComponent(audience)}${favoritesOnly ? "&favorites=1" : ""}${
-                collection ? `&collection=${encodeURIComponent(collection)}` : ""
-              }`
+              ? `/owner${collection ? `?collection=${encodeURIComponent(collection)}` : ""}`
+              : `/recipes?audience=${encodeURIComponent(audience)}${favoritesOnly ? "&favorites=1" : ""}${
+                  collection
+                    ? `&collection=${encodeURIComponent(collection)}`
+                    : ""
+                }`
         }
         className={cn(
           buttonVariants({ variant: "ghost", size: "sm" }),
@@ -309,268 +358,354 @@ export default async function RecipePage({
 
       <MotionReveal>
         <Card className="surface-panel mb-6 border-white/40 print:break-inside-avoid print:border-border print:shadow-none">
-        <CardHeader className="space-y-4">
-          {isOwner ? (
-            <div className="flex flex-wrap items-center gap-2 print:hidden">
-              <Badge
-                variant={recipe.visibility?.public ? "success" : "outline"}
-              >
-                Public {recipe.visibility?.public ? "ON" : "OFF"}
-              </Badge>
-              <Badge
-                variant={
-                  recipe.visibility?.enterprise ? "secondary" : "outline"
-                }
-              >
-                Enterprise {recipe.visibility?.enterprise ? "ON" : "OFF"}
-              </Badge>
+          <CardHeader className="space-y-4">
+            {isOwner ? (
+              <div className="flex flex-wrap items-center gap-2 print:hidden">
+                <Badge
+                  variant={recipe.visibility?.public ? "success" : "outline"}
+                >
+                  Public {recipe.visibility?.public ? "ON" : "OFF"}
+                </Badge>
+                <Badge
+                  variant={
+                    recipe.visibility?.enterprise ? "secondary" : "outline"
+                  }
+                >
+                  Enterprise {recipe.visibility?.enterprise ? "ON" : "OFF"}
+                </Badge>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-2">
+                <CardTitle className="text-3xl">{recipe.title}</CardTitle>
+                <CardDescription>
+                  {recipe.collection} |{" "}
+                  {recipe.categoryPath?.join(" / ") || "Uncategorised"} | RN{" "}
+                  {recipe.pluNumber}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2 print:hidden">
+                <PrintRecipeButton />
+                <form action={setRecipeFavoriteAction}>
+                  <input type="hidden" name="recipeId" value={recipe.id} />
+                  <input
+                    type="hidden"
+                    name="value"
+                    value={String(!isFavorite)}
+                  />
+                  <FavoriteToggleButton
+                    filled={isFavorite}
+                    label={
+                      isFavorite ? "Remove from favorites" : "Save as favorite"
+                    }
+                    pendingLabel={
+                      isFavorite ? "Removing favourite" : "Saving favourite"
+                    }
+                    className={cn(
+                      "h-11 w-11 overflow-visible p-0",
+                      isFavorite
+                        ? "text-amber-500 hover:text-amber-600"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  />
+                </form>
+              </div>
             </div>
-          ) : null}
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-2">
-              <CardTitle className="text-3xl">{recipe.title}</CardTitle>
-              <CardDescription>
-                {recipe.collection} | {recipe.categoryPath?.join(" / ") || "Uncategorised"} | RN{" "}
-                {recipe.pluNumber}
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2 print:hidden">
-              <PrintRecipeButton />
-              <form action={setRecipeFavoriteAction}>
-                <input type="hidden" name="recipeId" value={recipe.id} />
-                <input type="hidden" name="value" value={String(!isFavorite)} />
-                <FavoriteToggleButton
-                  filled={isFavorite}
-                  label={isFavorite ? "Remove from favorites" : "Save as favorite"}
-                  pendingLabel={isFavorite ? "Removing favourite" : "Saving favourite"}
-                  className={cn(
-                    "h-11 w-11 overflow-visible p-0",
-                    isFavorite
-                      ? "text-amber-500 hover:text-amber-600"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-start">
+              <div className="aspect-4/3 overflow-hidden rounded-xl border border-border/70 bg-muted/20 lg:aspect-6/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={
+                    (recipe.imageUrl ?? "/recipe-placeholder.svg").trim() ||
+                    "/recipe-placeholder.svg"
+                  }
+                  alt={recipe.title}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
                 />
-              </form>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-start">
-            <div className="overflow-hidden rounded-xl border border-border/70 bg-muted/20">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={
-                  (recipe.imageUrl ?? "/recipe-placeholder.svg").trim() ||
-                  "/recipe-placeholder.svg"
-                }
-                alt={recipe.title}
-                className="aspect-4/3 w-full object-cover"
-                loading="lazy"
-              />
-            </div>
+              </div>
 
-            <div className="grid gap-3">
-              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      Collection
-                    </p>
-                    <p className="mt-1 text-sm font-medium">{recipe.collection}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      Category
-                    </p>
-                    <p className="mt-1 text-sm font-medium">
-                      {recipe.categoryPath?.join(" / ") ?? "Uncategorised"}
-                    </p>
+              <div className="grid gap-3">
+                <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Collection
+                      </p>
+                      <p className="mt-1 text-sm font-medium">
+                        {recipe.collection}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Category
+                      </p>
+                      <p className="mt-1 text-sm font-medium">
+                        {recipe.categoryPath?.join(" / ") ?? "Uncategorised"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      Portions
-                    </p>
-                    <p className="mt-1 text-lg font-semibold">
-                      {recipe.portions ?? "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      Portion weight
-                    </p>
-                    <p className="mt-1 text-lg font-semibold">
-                      {portionWeight ? `${portionWeight} g` : "-"}
-                    </p>
+                <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Portions
+                      </p>
+                      <p className="mt-1 text-lg font-semibold">
+                        {recipe.portions ?? "-"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        Portion weight
+                      </p>
+                      <p className="mt-1 text-lg font-semibold">
+                        {portionWeight ? `${portionWeight} g` : "-"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="rounded-xl border border-border/70 bg-background/60 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Allergens
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {containedAllergens.length > 0
-                    ? containedAllergens.map((name) => `✓ ${name}`).join(", ")
-                    : "None listed"}
-                </p>
+                <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Allergens
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {containedAllergens.length > 0
+                      ? containedAllergens.map((name) => `✓ ${name}`).join(", ")
+                      : "None listed"}
+                  </p>
+                </div>
+
+                {isOwner ? (
+                  <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-x-1">
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                          Recipe costing
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {recipeCostSummary ? "Edit" : "Cost"}
+                        </p>
+                      </div>
+                      <Link
+                        href={costingHref}
+                        className={`${cn(
+                          buttonVariants({ variant: "ghost", size: "sm" }),
+                        )}`}
+                        aria-label={
+                          recipeCostSummary ? "Edit costing" : "Cost recipe"
+                        }
+                        title={
+                          recipeCostSummary ? "Edit costing" : "Cost recipe"
+                        }
+                      >
+                        <EditIcon className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </div>
+
+                    {costingUnavailableReason ? (
+                      <p className="mt-3 text-xs text-rose-700">
+                        {costingUnavailableReason}
+                      </p>
+                    ) : recipeCostSummary ? (
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            Total cost
+                          </p>
+                          <p className="mt-1 text-sm font-semibold">
+                            {formatRecipeCostMoney(
+                              recipeCostSummary.totalCost,
+                              recipeCostSummary.currency,
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            Cost/portion
+                          </p>
+                          <p className="mt-1 text-sm font-semibold">
+                            {formatRecipeCostMoney(
+                              recipeCostSummary.costPerPortion,
+                              recipeCostSummary.currency,
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                            Portions
+                          </p>
+                          <p className="mt-1 text-sm font-semibold">
+                            {recipeCostSummary.recipePortions ?? "-"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-muted-foreground">
+                        No saved costing yet.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
         </Card>
       </MotionReveal>
 
       <MotionReveal delay={0.06}>
         <Card className="mb-6 print:break-inside-avoid print:shadow-none">
-        <CardHeader>
-          <CardTitle className="text-lg">Nutrition</CardTitle>
-          <CardDescription>
-            Presented from the recipe nutrition data.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Per 100g
-            </p>
-            <div className="mt-2 space-y-1 text-sm">
-              <p>
-                Energy:{" "}
-                <span className="font-medium">
-                  {formatNumber(energyKjPer100g)}
-                </span>{" "}
-                kJ
+          <CardHeader>
+            <CardTitle className="text-lg">Nutrition</CardTitle>
+            <CardDescription>
+              Presented from the recipe nutrition data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Per 100g
               </p>
-              <p>
-                Energy:{" "}
-                <span className="font-medium">
-                  {formatNumber(energyKcalPer100g)}
-                </span>{" "}
-                kcal
-              </p>
+              <div className="mt-2 space-y-1 text-sm">
+                <p>
+                  Energy:{" "}
+                  <span className="font-medium">
+                    {formatNumber(energyKjPer100g)}
+                  </span>{" "}
+                  kJ
+                </p>
+                <p>
+                  Energy:{" "}
+                  <span className="font-medium">
+                    {formatNumber(energyKcalPer100g)}
+                  </span>{" "}
+                  kcal
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Per serving
-            </p>
-            <div className="mt-2 space-y-1 text-sm">
-              <p>
-                Energy:{" "}
-                <span className="font-medium">
-                  {formatNumber(energyKjPerServing)}
-                </span>{" "}
-                kJ /{" "}
-                <span className="font-medium">
-                  {formatNumber(energyKcalPerServing)}
-                </span>{" "}
-                kcal
+            <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Per serving
               </p>
-              <p>
-                Fat:{" "}
-                <span className="font-medium">
-                  {formatNumber(fatPerServing)}
-                </span>{" "}
-                g
-              </p>
-              <p>
-                Saturates:{" "}
-                <span className="font-medium">
-                  {formatNumber(saturatesPerServing)}
-                </span>{" "}
-                g
-              </p>
-              <p>
-                Sugars:{" "}
-                <span className="font-medium">
-                  {formatNumber(sugarsPerServing)}
-                </span>{" "}
-                g
-              </p>
-              <p>
-                Salt:{" "}
-                <span className="font-medium">
-                  {formatNumber(saltPerServing)}
-                </span>{" "}
-                g
-              </p>
+              <div className="mt-2 space-y-1 text-sm">
+                <p>
+                  Energy:{" "}
+                  <span className="font-medium">
+                    {formatNumber(energyKjPerServing)}
+                  </span>{" "}
+                  kJ /{" "}
+                  <span className="font-medium">
+                    {formatNumber(energyKcalPerServing)}
+                  </span>{" "}
+                  kcal
+                </p>
+                <p>
+                  Fat:{" "}
+                  <span className="font-medium">
+                    {formatNumber(fatPerServing)}
+                  </span>{" "}
+                  g
+                </p>
+                <p>
+                  Saturates:{" "}
+                  <span className="font-medium">
+                    {formatNumber(saturatesPerServing)}
+                  </span>{" "}
+                  g
+                </p>
+                <p>
+                  Sugars:{" "}
+                  <span className="font-medium">
+                    {formatNumber(sugarsPerServing)}
+                  </span>{" "}
+                  g
+                </p>
+                <p>
+                  Salt:{" "}
+                  <span className="font-medium">
+                    {formatNumber(saltPerServing)}
+                  </span>{" "}
+                  g
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Reference intake
-            </p>
-            <div className="mt-2 space-y-1 text-sm">
-              <p className="flex items-center justify-between gap-2">
-                <span>Energy</span>
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                    trafficLightClass(riEnergy),
-                  )}
-                >
-                  {formatRiLabel(riEnergy)}
-                </span>
+            <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Reference intake
               </p>
-              <p className="flex items-center justify-between gap-2">
-                <span>Fat</span>
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                    trafficLightClass(riFat),
-                  )}
-                >
-                  {formatRiLabel(riFat)}
-                </span>
-              </p>
-              <p className="flex items-center justify-between gap-2">
-                <span>Saturates</span>
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                    trafficLightClass(riSaturates),
-                  )}
-                >
-                  {formatRiLabel(riSaturates)}
-                </span>
-              </p>
-              <p className="flex items-center justify-between gap-2">
-                <span>Sugars</span>
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                    trafficLightClass(riSugars),
-                  )}
-                >
-                  {formatRiLabel(riSugars)}
-                </span>
-              </p>
-              <p className="flex items-center justify-between gap-2">
-                <span>Salt</span>
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                    trafficLightClass(riSalt),
-                  )}
-                >
-                  {formatRiLabel(riSalt)}
-                </span>
-              </p>
+              <div className="mt-2 space-y-1 text-sm">
+                <p className="flex items-center justify-between gap-2">
+                  <span>Energy</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                      trafficLightClass(riEnergy),
+                    )}
+                  >
+                    {formatRiLabel(riEnergy)}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between gap-2">
+                  <span>Fat</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                      trafficLightClass(riFat),
+                    )}
+                  >
+                    {formatRiLabel(riFat)}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between gap-2">
+                  <span>Saturates</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                      trafficLightClass(riSaturates),
+                    )}
+                  >
+                    {formatRiLabel(riSaturates)}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between gap-2">
+                  <span>Sugars</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                      trafficLightClass(riSugars),
+                    )}
+                  >
+                    {formatRiLabel(riSugars)}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between gap-2">
+                  <span>Salt</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                      trafficLightClass(riSalt),
+                    )}
+                  >
+                    {formatRiLabel(riSalt)}
+                  </span>
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
         </Card>
       </MotionReveal>
 
-      <MotionReveal delay={0.1} className="grid gap-6 print:grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]">
+      <MotionReveal
+        delay={0.1}
+        className="grid gap-6 print:grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]"
+      >
         <Card className="h-fit print:break-inside-avoid">
           <CardHeader>
             <CardTitle className="text-lg">Ingredients</CardTitle>
@@ -587,7 +722,9 @@ export default async function RecipePage({
                     const target = ptnLabel ? subRecipeTargets[ptnLabel] : null;
                     const fallbackHref = ptnLabel
                       ? `/recipes?audience=${encodeURIComponent(audience)}&q=${encodeURIComponent(ptnLabel)}${
-                          recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""
+                          recipe.collection
+                            ? `&collection=${encodeURIComponent(recipe.collection)}`
+                            : ""
                         }`
                       : null;
                     const targetHref = target?.directMatch

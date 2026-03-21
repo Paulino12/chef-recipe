@@ -1,27 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { useFormStatus } from "react-dom";
 
 import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { cn } from "@/lib/utils";
 
-type ConfirmSubmitButtonProps = Omit<
+type LinkedFormSubmitButtonProps = Omit<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
-  "children"
+  "children" | "form"
 > & {
   children: React.ReactNode;
-  confirmMessage: string;
+  formId: string;
   pendingText?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
   showSpinner?: boolean;
 };
 
-export function ConfirmSubmitButton({
+export function LinkedFormSubmitButton({
   children,
-  confirmMessage,
+  formId,
   pendingText,
   disabled,
   variant = "default",
@@ -30,24 +29,26 @@ export function ConfirmSubmitButton({
   showSpinner = true,
   onClick,
   ...props
-}: ConfirmSubmitButtonProps) {
-  const { pending } = useFormStatus();
-  const isDisabled = Boolean(disabled || pending);
+}: LinkedFormSubmitButtonProps) {
+  const [pending, setPending] = React.useState(false);
 
   return (
     <Button
-      type="submit"
+      type="button"
       variant={variant}
       size={size}
-      disabled={isDisabled}
+      disabled={Boolean(disabled || pending)}
       aria-busy={pending || undefined}
       className={cn("min-w-20", className)}
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented || pending) return;
-        if (!window.confirm(confirmMessage)) {
-          event.preventDefault();
-        }
+
+        const form = document.getElementById(formId);
+        if (!(form instanceof HTMLFormElement)) return;
+
+        setPending(true);
+        form.requestSubmit();
       }}
       {...props}
     >

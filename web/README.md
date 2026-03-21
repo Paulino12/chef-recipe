@@ -116,6 +116,42 @@ create index if not exists idx_user_recipe_favorites_recipe_id
 
 If this Supabase project was reset after the first schema setup, rerun the SQL block above once so favorites persist in the database instead of falling back to cookies only.
 
+## Database Migration Required for Recipe Costing
+
+Run this once in Supabase SQL Editor before using the owner costing workspace:
+
+```sql
+create table if not exists public.recipe_costings (
+  recipe_id text primary key,
+  recipe_title text not null,
+  recipe_collection text not null,
+  recipe_portions numeric,
+  ingredient_fingerprint text not null,
+  currency text not null default 'GBP',
+  total_cost numeric(12,2) not null default 0,
+  cost_per_portion numeric(12,2),
+  source_recipe_id text,
+  cost_lines jsonb not null default '[]'::jsonb,
+  updated_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint recipe_costings_currency_check check (char_length(trim(currency)) > 0)
+);
+
+create index if not exists idx_recipe_costings_updated_at
+  on public.recipe_costings (updated_at desc);
+
+create index if not exists idx_recipe_costings_source_recipe_id
+  on public.recipe_costings (source_recipe_id);
+
+drop trigger if exists trg_recipe_costings_updated_at on public.recipe_costings;
+create trigger trg_recipe_costings_updated_at
+before update on public.recipe_costings
+for each row execute function public.touch_updated_at();
+```
+
+If the project was recreated or reset after the schema was first applied, rerun this block so saved recipe costing can load and persist.
+
 ## Supabase Email Templates
 
 The app now expects:

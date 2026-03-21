@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { getFavoriteIdsFromCookieStore } from "@/lib/api/favoriteCookie";
 import { listRecipeFavoriteIds } from "@/lib/api/favorites";
+import { listRecipeCostingSummariesByIds } from "@/lib/api/recipeCostings";
 import { buildCompactPagination } from "@/lib/pagination";
+import { formatRecipeCostMoney } from "@/lib/recipeCosting";
 import { getServerAccessSession } from "@/lib/api/serverSession";
 import {
   buildHrefWithQuery,
@@ -217,6 +219,16 @@ export default async function RecipesPage({
     : 0;
 
   const recipes = data.items;
+  let recipeCostingSummaries = {} as Awaited<
+    ReturnType<typeof listRecipeCostingSummariesByIds>
+  >;
+  try {
+    recipeCostingSummaries = await listRecipeCostingSummariesByIds(
+      recipes.map((recipe) => recipe.id),
+    );
+  } catch {
+    recipeCostingSummaries = {};
+  }
   const currentListHref = buildRecipesHref({
     q,
     collection: selectedCollection,
@@ -456,6 +468,15 @@ export default async function RecipesPage({
             const energyKcal = readNumeric(per100g, ["energyKcal", "energy_kcal", "kcal", "kCal"]);
             const isFavorite = favoriteIds.has(recipe.id);
             const containedAllergens = listContainedAllergenLabels(recipe.allergens);
+            const recipeCostingSummary = recipeCostingSummaries[recipe.id];
+            const costingLabel = recipeCostingSummary
+              ? recipeCostingSummary.costPerPortion !== null
+                ? `${formatRecipeCostMoney(
+                    recipeCostingSummary.costPerPortion,
+                    recipeCostingSummary.currency,
+                  )}/portion`
+                : "Costed"
+              : "";
 
             return (
               <MotionStaggerItem key={recipe.id}>
@@ -498,7 +519,9 @@ export default async function RecipesPage({
                           </Link>
                         </CardTitle>
                         <CardDescription className="mt-1">
-                          {`${recipe.collection} | ${recipe.categoryPath?.[0] ?? "Uncategorised"} | RN ${recipe.pluNumber}`}
+                          {`${recipe.collection} | ${recipe.categoryPath?.[0] ?? "Uncategorised"} | RN ${recipe.pluNumber}${
+                            costingLabel ? ` | ${costingLabel}` : ""
+                          }`}
                         </CardDescription>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Allergens:{" "}

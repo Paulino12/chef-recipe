@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -139,7 +140,8 @@ export default function ResetPasswordPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={loading}>
+                  <Button type="submit" disabled={loading} aria-busy={loading || undefined}>
+                    {loading ? <ButtonSpinner /> : null}
                     {loading ? "Saving..." : "Update password"}
                   </Button>
                   <Link href="/signin" className="link-hover text-sm">
