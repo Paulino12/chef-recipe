@@ -85,6 +85,20 @@ function trafficLightClass(riPercent: number | null) {
   return "border-rose-200 bg-rose-100 text-rose-800";
 }
 
+function trafficLightPillShellClass(riPercent: number | null) {
+  if (riPercent === null) return "border-slate-300 bg-slate-500 text-white";
+  if (riPercent <= 5) return "border-lime-500 bg-lime-500 text-white";
+  if (riPercent <= 20) return "border-amber-500 bg-amber-500 text-white";
+  return "border-orange-500 bg-orange-500 text-white";
+}
+
+function trafficLightPillBadgeClass(riPercent: number | null) {
+  if (riPercent === null) return "text-slate-700";
+  if (riPercent <= 5) return "text-lime-700";
+  if (riPercent <= 20) return "text-amber-700";
+  return "text-orange-700";
+}
+
 function formatRiLabel(riPercent: number | null) {
   return riPercent === null ? "No RI" : `${formatNumber(riPercent)}% RI`;
 }
@@ -235,11 +249,14 @@ export default async function RecipePage({
     | { steps?: Array<{ number?: number; text?: string }>; text?: string };
 
   const portionWeight =
-    recipe.portionNetWeightG ?? nutritionWorkflow.nutrition.portionNetWeightG ?? null;
+    recipe.portionNetWeightG ??
+    nutritionWorkflow.nutrition.portionNetWeightG ??
+    null;
   const energyKjPer100g = nutritionWorkflow.nutrition.per100g.energyKj;
   const energyKcalPer100g = nutritionWorkflow.nutrition.per100g.energyKcal;
   const energyKjPerServing = nutritionWorkflow.nutrition.perServing.energyKj;
-  const energyKcalPerServing = nutritionWorkflow.nutrition.perServing.energyKcal;
+  const energyKcalPerServing =
+    nutritionWorkflow.nutrition.perServing.energyKcal;
   const fatPerServing = nutritionWorkflow.nutrition.perServing.fatG;
   const saturatesPerServing = nutritionWorkflow.nutrition.perServing.saturatesG;
   const sugarsPerServing = nutritionWorkflow.nutrition.perServing.sugarsG;
@@ -249,6 +266,38 @@ export default async function RecipePage({
   const riSaturates = nutritionWorkflow.nutrition.riPercent.saturates;
   const riSugars = nutritionWorkflow.nutrition.riPercent.sugars;
   const riSalt = nutritionWorkflow.nutrition.riPercent.salt;
+  const nutritionPills = [
+    {
+      key: "energy",
+      label: "kJ/kcal",
+      value: `${formatNumber(energyKjPerServing)}/${formatNumber(energyKcalPerServing)}`,
+      ri: riEnergy,
+    },
+    {
+      key: "fat",
+      label: "Fat",
+      value: `${formatNumber(fatPerServing)}g`,
+      ri: riFat,
+    },
+    {
+      key: "saturates",
+      label: "Sat fat",
+      value: `${formatNumber(saturatesPerServing)}g`,
+      ri: riSaturates,
+    },
+    {
+      key: "sugars",
+      label: "Sugar",
+      value: `${formatNumber(sugarsPerServing)}g`,
+      ri: riSugars,
+    },
+    {
+      key: "salt",
+      label: "Salt",
+      value: `${formatNumber(saltPerServing)}g`,
+      ri: riSalt,
+    },
+  ] as const;
   const containedAllergens = listContainedAllergenLabels(recipe.allergens);
 
   const ingredientRows = Array.isArray(recipe.ingredients)
@@ -560,138 +609,50 @@ export default async function RecipePage({
           </CardHeader>
           {nutritionWorkflow.canShowNutritionCard ? (
             <CardContent className="space-y-4">
-              <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Per 100g
-                  </p>
-                  <div className="mt-2 space-y-1 text-sm">
-                    <p>
-                      Energy:{" "}
-                      <span className="font-medium">
-                        {formatNumber(energyKjPer100g)}
-                      </span>{" "}
-                      kJ
-                    </p>
-                    <p>
-                      Energy:{" "}
-                      <span className="font-medium">
-                        {formatNumber(energyKcalPer100g)}
-                      </span>{" "}
-                      kcal
-                    </p>
-                  </div>
+              <div className="rounded-2xl border border-border/70 bg-linear-to-br from-stone-50 to-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-center gap-6">
+                  {nutritionPills.map((pill) => (
+                    <div
+                      key={pill.key}
+                      className={cn(
+                        "flex min-h-40 w-[125px] flex-col justify-between rounded-[30px] border-2 px-3 py-4 shadow-sm",
+                        trafficLightPillShellClass(pill.ri),
+                      )}
+                    >
+                      <div className="space-y-3">
+                        <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em]">
+                          {pill.label}
+                        </p>
+                        <p className="text-center text-[1.5rem] font-black leading-none tracking-tight">
+                          {pill.value}
+                        </p>
+                      </div>
+                      <div className="mt-4 rounded-full bg-white px-3 py-1.5 text-center shadow-inner">
+                        <span
+                          className={cn(
+                            "text-base font-black leading-none",
+                            trafficLightPillBadgeClass(pill.ri),
+                          )}
+                        >
+                          {pill.ri === null
+                            ? "No RI"
+                            : `${formatNumber(pill.ri)}%`}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Per serving
-                  </p>
-                  <div className="mt-2 space-y-1 text-sm">
-                    <p>
-                      Energy:{" "}
-                      <span className="font-medium">
-                        {formatNumber(energyKjPerServing)}
-                      </span>{" "}
-                      kJ /{" "}
-                      <span className="font-medium">
-                        {formatNumber(energyKcalPerServing)}
-                      </span>{" "}
-                      kcal
-                    </p>
-                    <p>
-                      Fat:{" "}
-                      <span className="font-medium">
-                        {formatNumber(fatPerServing)}
-                      </span>{" "}
-                      g
-                    </p>
-                    <p>
-                      Saturates:{" "}
-                      <span className="font-medium">
-                        {formatNumber(saturatesPerServing)}
-                      </span>{" "}
-                      g
-                    </p>
-                    <p>
-                      Sugars:{" "}
-                      <span className="font-medium">
-                        {formatNumber(sugarsPerServing)}
-                      </span>{" "}
-                      g
-                    </p>
-                    <p>
-                      Salt:{" "}
-                      <span className="font-medium">
-                        {formatNumber(saltPerServing)}
-                      </span>{" "}
-                      g
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Reference intake
-                  </p>
-                  <div className="mt-2 space-y-1 text-sm">
-                    <p className="flex items-center justify-between gap-2">
-                      <span>Energy</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                          trafficLightClass(riEnergy),
-                        )}
-                      >
-                        {formatRiLabel(riEnergy)}
-                      </span>
-                    </p>
-                    <p className="flex items-center justify-between gap-2">
-                      <span>Fat</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                          trafficLightClass(riFat),
-                        )}
-                      >
-                        {formatRiLabel(riFat)}
-                      </span>
-                    </p>
-                    <p className="flex items-center justify-between gap-2">
-                      <span>Saturates</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                          trafficLightClass(riSaturates),
-                        )}
-                      >
-                        {formatRiLabel(riSaturates)}
-                      </span>
-                    </p>
-                    <p className="flex items-center justify-between gap-2">
-                      <span>Sugars</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                          trafficLightClass(riSugars),
-                        )}
-                      >
-                        {formatRiLabel(riSugars)}
-                      </span>
-                    </p>
-                    <p className="flex items-center justify-between gap-2">
-                      <span>Salt</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                          trafficLightClass(riSalt),
-                        )}
-                      >
-                        {formatRiLabel(riSalt)}
-                      </span>
-                    </p>
-                  </div>
-                </div>
+                <p className="mt-3 w-full text-center text-sm text-muted-foreground">
+                  Typical values per 100g: Energy{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatNumber(energyKjPer100g)} kJ
+                  </span>
+                  ,{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatNumber(energyKcalPer100g)} kcal
+                  </span>
+                </p>
               </div>
             </CardContent>
           ) : (

@@ -496,9 +496,8 @@ function resolveStatusLabel(status: NutritionWorkflowStatus) {
     case "estimated":
       return "Estimated nutrition";
     case "verified":
-      return "Verified nutrition";
     case "manual":
-      return "Saved nutrition";
+      return "Verified nutrition";
   }
 }
 
@@ -507,11 +506,10 @@ function resolveStatusDescription(status: NutritionWorkflowStatus) {
     case "missing":
       return "No nutrition values are stored on this recipe yet.";
     case "estimated":
-      return "These values are best treated as a draft until someone reviews them.";
+      return "These values are an estimate and should be reviewed against official nutrition if needed.";
     case "verified":
-      return "Nutrition has been reviewed and is ready to show with confidence.";
     case "manual":
-      return "Nutrition is already stored on this recipe and can act as the manual override.";
+      return "Nutrition is already stored on this recipe and is treated as verified.";
   }
 }
 
@@ -527,9 +525,8 @@ function resolveGuidance(
     case "estimated":
       return "Review the estimate, then mark it verified or keep a manual override if the official numbers differ.";
     case "verified":
-      return "Re-check the nutrition only when ingredients, portions, or finished yield change.";
     case "manual":
-      return "Keep these values as the source of truth, or add auto-calculation later and lock manual values to prevent overwrites.";
+      return "Keep these values as the source of truth, and only re-check them when ingredients, portions, or finished yield change.";
   }
 }
 
@@ -549,9 +546,9 @@ function resolveSourceLabel(source: NutritionWorkflowSource) {
 function resolveBadgeVariant(status: NutritionWorkflowStatus) {
   switch (status) {
     case "verified":
+    case "manual":
       return "success";
     case "estimated":
-    case "manual":
       return "secondary";
     case "missing":
       return "outline";
@@ -589,9 +586,7 @@ export function getRecipeNutritionWorkflow(options: {
   const canShowNutritionCard = countPresent(savedMetricValues) > 0;
 
   const hasAnyNutritionData = filledMetricCount > 0;
-  const status =
-    meta.status ??
-    (hasAnyNutritionData ? "manual" : "missing");
+  const status = hasAnyNutritionData ? "verified" : "missing";
   const source =
     meta.source ??
     (hasAnyNutritionData
