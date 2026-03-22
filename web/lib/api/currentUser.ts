@@ -203,20 +203,35 @@ async function getCurrentUserFromSupabase(req: NextRequest): Promise<CurrentUser
   };
 }
 
+function isDevAuthFallbackEnabled() {
+  if (process.env.NODE_ENV === "test") return true;
+  return (
+    process.env.NODE_ENV === "development" &&
+    process.env.DEV_AUTH_FALLBACK_ENABLED?.trim().toLowerCase() === "true"
+  );
+}
+
+function readDevHeader(req: NextRequest, key: string) {
+  if (process.env.NODE_ENV !== "test") return "";
+  return req.headers.get(key)?.trim() || "";
+}
+
 function getCurrentUserFromDev(req: NextRequest): CurrentUser | null {
-  // Optional local override path used while API auth wiring is still in progress.
-  const id = req.headers.get("x-user-id")?.trim() || process.env.DEV_USER_ID?.trim() || "";
-  const email =
-    req.headers.get("x-user-email")?.trim() || process.env.DEV_USER_EMAIL?.trim() || "";
+  if (!isDevAuthFallbackEnabled()) return null;
+
+  // Local development fallback is env-driven by default.
+  // Test-only request headers remain available for route tests.
+  const id = readDevHeader(req, "x-user-id") || process.env.DEV_USER_ID?.trim() || "";
+  const email = readDevHeader(req, "x-user-email") || process.env.DEV_USER_EMAIL?.trim() || "";
   const role =
-    parseRole(req.headers.get("x-user-role")?.trim()) ||
+    parseRole(readDevHeader(req, "x-user-role")) ||
     parseRole(process.env.DEV_USER_ROLE?.trim());
   const subscriptionStatus =
-    parseSubscriptionStatus(req.headers.get("x-user-subscription-status")?.trim()) ||
+    parseSubscriptionStatus(readDevHeader(req, "x-user-subscription-status")) ||
     parseSubscriptionStatus(process.env.DEV_USER_SUBSCRIPTION_STATUS?.trim());
 
   const enterpriseGranted = parseBool(
-    req.headers.get("x-user-enterprise-granted")?.trim() ||
+    readDevHeader(req, "x-user-enterprise-granted") ||
       process.env.DEV_USER_ENTERPRISE_GRANTED?.trim(),
   );
 
@@ -238,7 +253,7 @@ function getCurrentUserFromDev(req: NextRequest): CurrentUser | null {
 /**
  * Resolution order:
  * 1) Supabase bearer token (when configured)
- * 2) DEV_USER_* fallback for local development
+ * 2) Explicit DEV_USER_* fallback for safe local development/testing
  */
 export async function getCurrentUserFromRequest(req: NextRequest): Promise<CurrentUser | null> {
   const fromSupabase = await getCurrentUserFromSupabase(req);

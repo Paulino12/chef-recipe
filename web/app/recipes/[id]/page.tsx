@@ -77,14 +77,6 @@ function formatNumber(value: number | null) {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
-function trafficLightClass(riPercent: number | null) {
-  if (riPercent === null) return "border-slate-200 bg-slate-100 text-slate-700";
-  if (riPercent <= 5)
-    return "border-emerald-200 bg-emerald-100 text-emerald-800";
-  if (riPercent <= 20) return "border-amber-200 bg-amber-100 text-amber-800";
-  return "border-rose-200 bg-rose-100 text-rose-800";
-}
-
 function trafficLightPillShellClass(riPercent: number | null) {
   if (riPercent === null) return "border-slate-300 bg-slate-500 text-white";
   if (riPercent <= 5) return "border-lime-500 bg-lime-500 text-white";
@@ -97,10 +89,6 @@ function trafficLightPillBadgeClass(riPercent: number | null) {
   if (riPercent <= 5) return "text-lime-700";
   if (riPercent <= 20) return "text-amber-700";
   return "text-orange-700";
-}
-
-function formatRiLabel(riPercent: number | null) {
-  return riPercent === null ? "No RI" : `${formatNumber(riPercent)}% RI`;
 }
 
 function resolveReturnTo(value?: string) {
