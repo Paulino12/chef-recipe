@@ -11,6 +11,7 @@ export const RECIPES_LIST_QUERY = `
     method,
     allergens,
     nutrition,
+    nutritionMeta,
     visibility
   }
 `;
@@ -28,6 +29,7 @@ export const RECIPE_BY_ID_QUERY = `
     method,
     allergens,
     nutrition,
+    nutritionMeta,
     visibility
   }
 `;

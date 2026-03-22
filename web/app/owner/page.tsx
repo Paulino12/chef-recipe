@@ -13,12 +13,14 @@ import { type AdminRecipesResult } from "@/lib/api/adminRecipes";
 import { getInternalApiOrigin } from "@/lib/api/origin";
 import { listRecipeCostingSummariesByIds } from "@/lib/api/recipeCostings";
 import { buildCompactPagination } from "@/lib/pagination";
+import { getRecipeNutritionWorkflow } from "@/lib/recipeNutrition";
 import { formatRecipeCostMoney } from "@/lib/recipeCosting";
 import { getServerAccessSession } from "@/lib/api/serverSession";
 import {
   buildHrefWithQuery,
   parseCategoryFilter,
   parseCollectionFilter,
+  parseCostingFilter,
   parseImageFilter,
   parseVisibilityFilter,
   parsePageNumber,
@@ -35,6 +37,7 @@ type OwnerSearchParams = {
   collection?: string | string[];
   image?: string | string[];
   visibility?: string | string[];
+  costing?: string | string[];
 };
 
 function buildOwnerHref(params: {
@@ -43,6 +46,7 @@ function buildOwnerHref(params: {
   collection: string;
   image: string;
   visibility: string;
+  costing: string;
   page: number;
   pageSize: number;
 }) {
@@ -52,9 +56,25 @@ function buildOwnerHref(params: {
     collection: params.collection,
     image: params.image,
     visibility: params.visibility,
+    costing: params.costing,
     page: params.page,
     pageSize: params.pageSize,
   });
+}
+
+function readNumeric(map: Record<string, number | null | undefined> | undefined, keys: string[]) {
+  if (!map) return null;
+  for (const key of keys) {
+    const value = map[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function formatNutritionNumber(value: number | null) {
+  if (value === null) return "-";
+  const rounded = Number(value.toFixed(1));
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
 async function loadRecipes(
@@ -63,6 +83,7 @@ async function loadRecipes(
   collection: string,
   image: string,
   visibility: string,
+  costing: string,
   page: number,
   pageSize: number,
 ) {
@@ -88,6 +109,9 @@ async function loadRecipes(
   }
   if (visibility) {
     url.searchParams.set("visibility", visibility);
+  }
+  if (costing) {
+    url.searchParams.set("costing", costing);
   }
   url.searchParams.set("page", String(page));
   url.searchParams.set("pageSize", String(pageSize));
@@ -132,6 +156,7 @@ export default async function OwnerPage({
   const selectedCollection = parseCollectionFilter(pickFirstQueryParam(sp.collection));
   const selectedImageFilter = parseImageFilter(pickFirstQueryParam(sp.image));
   const selectedVisibilityFilter = parseVisibilityFilter(pickFirstQueryParam(sp.visibility));
+  const selectedCostingFilter = parseCostingFilter(pickFirstQueryParam(sp.costing));
   const requestedPage = parsePageNumber(pickFirstQueryParam(sp.page));
   const requestedPageSize = parsePageSizeNumber(pickFirstQueryParam(sp.pageSize));
   const data = await loadRecipes(
@@ -140,6 +165,7 @@ export default async function OwnerPage({
     selectedCollection,
     selectedImageFilter,
     selectedVisibilityFilter,
+    selectedCostingFilter,
     requestedPage,
     requestedPageSize,
   );
@@ -164,6 +190,7 @@ export default async function OwnerPage({
     collection: selectedCollection,
     image: selectedImageFilter,
     visibility: selectedVisibilityFilter,
+    costing: selectedCostingFilter,
     page: data.page,
     pageSize: data.pageSize,
   });
@@ -199,6 +226,7 @@ export default async function OwnerPage({
                   collection: "",
                   image: selectedImageFilter,
                   visibility: selectedVisibilityFilter,
+                  costing: selectedCostingFilter,
                   page: 1,
                   pageSize: data.pageSize,
                 })}
@@ -218,6 +246,7 @@ export default async function OwnerPage({
                     collection: collection.name,
                     image: selectedImageFilter,
                     visibility: selectedVisibilityFilter,
+                    costing: selectedCostingFilter,
                     page: 1,
                     pageSize: data.pageSize,
                   })}
@@ -280,7 +309,7 @@ export default async function OwnerPage({
                   </select>
                 </div>
               </div>
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.75fr)_auto] lg:items-end">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.75fr)_auto] lg:items-end">
                 <div>
                   <label className="mb-2 block text-sm font-medium" htmlFor="visibility">
                     Visibility
@@ -298,6 +327,21 @@ export default async function OwnerPage({
                     <option value="enterprise_off">Enterprise OFF</option>
                     <option value="any_on">Visible anywhere</option>
                     <option value="both_off">Both OFF</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium" htmlFor="costing">
+                    Costing
+                  </label>
+                  <select
+                    id="costing"
+                    name="costing"
+                    defaultValue={selectedCostingFilter}
+                    className="h-10 w-full rounded-md border border-input bg-background/80 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">All</option>
+                    <option value="with">With costing</option>
+                    <option value="without">Without costing</option>
                   </select>
                 </div>
                 <div>
@@ -403,6 +447,22 @@ export default async function OwnerPage({
                       )}/portion`
                     : "Costed"
                   : "";
+                const nutritionWorkflow = getRecipeNutritionWorkflow({
+                  nutrition: recipe.nutrition,
+                  nutritionMeta: recipe.nutritionMeta,
+                });
+                const energyKj = readNumeric(nutritionWorkflow.nutrition.per100g, [
+                  "energyKj",
+                  "energy_kj",
+                  "kj",
+                  "kJ",
+                ]);
+                const energyKcal = readNumeric(nutritionWorkflow.nutrition.per100g, [
+                  "energyKcal",
+                  "energy_kcal",
+                  "kcal",
+                  "kCal",
+                ]);
 
                 return (
                   <tr key={recipe.id} className="border-t align-top">
@@ -430,6 +490,21 @@ export default async function OwnerPage({
                             {recipe.collection} | RN {recipe.pluNumber}
                             {costingLabel ? ` | ${costingLabel}` : ""}
                           </p>
+                          <div className="mt-1 rounded-md bg-background/60 text-xs text-muted-foreground">
+                            <p>
+                              <span className="font-medium text-foreground">Portions:</span> {recipe.portions ?? "-"}
+                            </p>
+                            {nutritionWorkflow.canShowNutritionCard ? (
+                              <p>
+                                <span className="font-medium text-foreground">Per 100g energy:</span>{" "}
+                                {formatNutritionNumber(energyKj)} kJ / {formatNutritionNumber(energyKcal)} kcal
+                              </p>
+                            ) : (
+                              <p>
+                                <span className="font-medium text-foreground">Nutrition:</span> Not saved
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -483,6 +558,7 @@ export default async function OwnerPage({
                 collection: selectedCollection,
                 image: selectedImageFilter,
                 visibility: selectedVisibilityFilter,
+                costing: selectedCostingFilter,
                 page: data.page - 1,
                 pageSize: data.pageSize,
               })}
@@ -526,6 +602,7 @@ export default async function OwnerPage({
                     collection: selectedCollection,
                     image: selectedImageFilter,
                     visibility: selectedVisibilityFilter,
+                    costing: selectedCostingFilter,
                     page: token,
                     pageSize: data.pageSize,
                   })}
@@ -545,6 +622,7 @@ export default async function OwnerPage({
                 collection: selectedCollection,
                 image: selectedImageFilter,
                 visibility: selectedVisibilityFilter,
+                costing: selectedCostingFilter,
                 page: data.page + 1,
                 pageSize: data.pageSize,
               })}

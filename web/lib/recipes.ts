@@ -1,5 +1,9 @@
 import { sanity } from "@/lib/sanity/client";
 import { RECIPES_LIST_QUERY, RECIPE_BY_ID_QUERY } from "@/lib/sanity/queries";
+import {
+  type RecipeNutritionMeta,
+  type RecipeNutritionValue,
+} from "@/lib/recipeNutrition";
 
 export type AllergenStatus = "contains" | "may_contain" | "none";
 
@@ -41,12 +45,8 @@ export type Recipe = {
     text: string;
   };
   allergens: Record<AllergenSlug, AllergenStatus>;
-  nutrition: {
-    portionNetWeightG: number | null;
-    perServing: Record<string, number>;
-    per100g: Record<string, number>;
-    riPercent: Record<string, number>;
-  };
+  nutrition?: RecipeNutritionValue | null;
+  nutritionMeta?: RecipeNutritionMeta | null;
   portionNetWeightG: number | null;
   visibility: { enterprise: boolean; public: boolean };
   source?: { pdfPath: string };
@@ -68,6 +68,7 @@ export type PublicRecipeCard = {
   nutrition?: {
     per100g?: Record<string, number>;
   };
+  nutritionMeta?: RecipeNutritionMeta | null;
   visibility?: {
     public?: boolean;
     enterprise?: boolean;
@@ -236,6 +237,7 @@ export async function searchRecipes(query: string) {
       portions,
       allergens,
       nutrition,
+      nutritionMeta,
       visibility
     }
   `;
@@ -385,6 +387,7 @@ export async function listAccessibleRecipes(
       portions,
       allergens,
       nutrition,
+      nutritionMeta,
       visibility
     }
   `;
@@ -453,6 +456,7 @@ export async function getAccessibleRecipeById(id: string, audience: RecipeAudien
       method,
       allergens,
       nutrition,
+      nutritionMeta,
       "portionNetWeightG": nutrition.portionNetWeightG,
       visibility
     }

@@ -74,6 +74,12 @@ export function parseVisibilityFilter(value?: string) {
   return "";
 }
 
+export function parseCostingFilter(value?: string) {
+  const costingFilter = value?.trim();
+  if (costingFilter === "with" || costingFilter === "without") return costingFilter;
+  return "";
+}
+
 export function parseIncludeRelatedFilter(value?: string) {
   return value === "1" || value === "true";
 }

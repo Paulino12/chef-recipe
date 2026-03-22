@@ -1,5 +1,6 @@
 import { type RecipeCollection, normalizeCollection } from "@/lib/recipes";
 import { getSanityWriteClients, sanityServer } from "@/lib/sanity/serverClient";
+import { listCostedRecipeIds } from "@/lib/api/recipeCostings";
 
 export const ADMIN_AUDIENCES = ["public", "enterprise"] as const;
 export type AdminAudience = (typeof ADMIN_AUDIENCES)[number];
@@ -13,6 +14,7 @@ export type AdminVisibilityFilter =
   | "enterprise_off"
   | "any_on"
   | "both_off";
+export type AdminCostingFilter = "with" | "without";
 
 export type AdminRecipesResult = {
   items: AdminRecipeRow[];
@@ -32,6 +34,8 @@ export type AdminRecipeRow = {
   imageUrl?: string;
   categoryPath?: string[];
   portions: number | null;
+  nutrition?: unknown;
+  nutritionMeta?: unknown;
   visibility?: {
     public?: boolean;
     enterprise?: boolean;
@@ -111,6 +115,13 @@ const VISIBILITY_FILTER = `
     ($visibilityFilter == "both_off" && coalesce(visibility.public, false) == false && coalesce(visibility.enterprise, false) == false)
   )
 `;
+const COSTING_FILTER = `
+  (
+    !defined($costingFilter) ||
+    ($costingFilter == "with" && _id in $costedIds) ||
+    ($costingFilter == "without" && !(_id in $costedIds))
+  )
+`;
 
 const ADMIN_RECIPES_COUNT_QUERY = `
   count(
@@ -120,6 +131,7 @@ const ADMIN_RECIPES_COUNT_QUERY = `
       ${COLLECTION_FILTER} &&
       ${IMAGE_FILTER} &&
       ${VISIBILITY_FILTER} &&
+      ${COSTING_FILTER} &&
       (
         !defined($categoryPath) ||
         (
@@ -147,6 +159,7 @@ const ADMIN_RECIPES_ITEMS_QUERY = `
     ${COLLECTION_FILTER} &&
     ${IMAGE_FILTER} &&
     ${VISIBILITY_FILTER} &&
+    ${COSTING_FILTER} &&
     (
       !defined($categoryPath) ||
       (
@@ -171,6 +184,8 @@ const ADMIN_RECIPES_ITEMS_QUERY = `
     "imageUrl": coalesce(image.asset->url, imageUrl, "/recipe-placeholder.svg"),
     categoryPath,
     portions,
+    nutrition,
+    nutritionMeta,
     visibility
   }
 `;
@@ -182,6 +197,7 @@ const ADMIN_RECIPE_CATEGORIES_QUERY = `
     ${COLLECTION_FILTER} &&
     ${IMAGE_FILTER} &&
     ${VISIBILITY_FILTER} &&
+    ${COSTING_FILTER} &&
     defined(categoryPath[0]) &&
     string(categoryPath[0]) != ""
   ]{
@@ -234,6 +250,11 @@ function normalizePageSize(value: number | undefined): AdminPageSize {
 function normalizeCategory(value?: string | null) {
   const category = value?.trim();
   return category ? category : null;
+}
+
+function normalizeCostingFilter(value?: AdminCostingFilter | null) {
+  if (value === "with" || value === "without") return value;
+  return null;
 }
 
 function splitCategoryPath(value?: string | null) {
@@ -505,6 +526,8 @@ export async function listAdminCategories(
   collection?: RecipeCollection | null,
   imageFilter?: AdminImageFilter | null,
   visibilityFilter?: AdminVisibilityFilter | null,
+  costingFilter?: AdminCostingFilter | null,
+  costedIds?: string[],
 ) {
   const rows = await sanityServer.fetch<Array<{ categoryPath?: string[] }>>(ADMIN_RECIPE_CATEGORIES_QUERY, {
     collection: normalizeCollection(collection),
@@ -521,6 +544,8 @@ export async function listAdminCategories(
       ].includes(visibilityFilter)
         ? visibilityFilter
         : null,
+    costingFilter: normalizeCostingFilter(costingFilter),
+    costedIds: Array.isArray(costedIds) ? costedIds : [],
   });
   const counts = new Map<string, AdminCategoryOption>();
   for (const row of rows) {
@@ -559,6 +584,7 @@ export async function listAdminRecipes(
     collection?: RecipeCollection | null;
     imageFilter?: AdminImageFilter | null;
     visibilityFilter?: AdminVisibilityFilter | null;
+    costingFilter?: AdminCostingFilter | null;
   },
 ): Promise<AdminRecipesResult> {
   const q = query?.trim();
@@ -580,14 +606,25 @@ export async function listAdminRecipes(
     ].includes(options.visibilityFilter)
       ? options.visibilityFilter
       : null;
+  const costingFilter = normalizeCostingFilter(options?.costingFilter);
   const page = normalizePage(options?.page);
   const pageSize = normalizePageSize(options?.pageSize);
+  let costedIds: string[] = [];
+  if (costingFilter) {
+    try {
+      costedIds = await listCostedRecipeIds();
+    } catch {
+      costedIds = [];
+    }
+  }
   const params = {
     q: q ? `*${q}*` : null,
     categoryPath: categoryPath.length ? categoryPath : null,
     collection,
     imageFilter,
     visibilityFilter,
+    costingFilter,
+    costedIds,
   };
   const totalRaw = await sanityServer.fetch<number>(ADMIN_RECIPES_COUNT_QUERY, params);
   const total = Number.isFinite(totalRaw) ? Math.max(0, Number(totalRaw)) : 0;
@@ -596,7 +633,7 @@ export async function listAdminRecipes(
   const start = (resolvedPage - 1) * pageSize;
   const end = start + pageSize;
   const [categories, collections, items] = await Promise.all([
-    listAdminCategories(collection, imageFilter, visibilityFilter),
+    listAdminCategories(collection, imageFilter, visibilityFilter, costingFilter, costedIds),
     listAdminCollections(),
     sanityServer.fetch<AdminRecipeRow[]>(ADMIN_RECIPES_ITEMS_QUERY, {
       ...params,

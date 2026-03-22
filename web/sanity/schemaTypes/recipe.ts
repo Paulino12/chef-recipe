@@ -282,6 +282,73 @@ export const recipe = defineType({
       ],
     }),
     defineField({
+      name: "nutritionMeta",
+      title: "Nutrition workflow",
+      type: "object",
+      group: "nutrition",
+      fields: [
+        defineField({
+          name: "status",
+          title: "Status",
+          type: "string",
+          options: {
+            list: [
+              { title: "Missing", value: "missing" },
+              { title: "Estimated", value: "estimated" },
+              { title: "Verified", value: "verified" },
+              { title: "Manual", value: "manual" },
+            ],
+          },
+        }),
+        defineField({
+          name: "source",
+          title: "Source",
+          type: "string",
+          options: {
+            list: [
+              { title: "Calculated", value: "calculated" },
+              { title: "Manual", value: "manual" },
+              { title: "Imported", value: "imported" },
+              { title: "Unknown", value: "unknown" },
+            ],
+          },
+        }),
+        defineField({
+          name: "confidence",
+          title: "Confidence",
+          type: "number",
+          description: "Optional 0-1 confidence score for estimated nutrition.",
+        }),
+        defineField({
+          name: "matchedIngredientCount",
+          title: "Matched ingredients",
+          type: "number",
+        }),
+        defineField({
+          name: "totalIngredientCount",
+          title: "Total ingredients",
+          type: "number",
+        }),
+        defineField({
+          name: "unmatchedItems",
+          title: "Unmatched items",
+          type: "array",
+          of: [{ type: "string" }],
+        }),
+        defineField({
+          name: "lastCalculatedAt",
+          title: "Last calculated at",
+          type: "datetime",
+        }),
+        defineField({
+          name: "lockedByEditor",
+          title: "Lock manual values",
+          type: "boolean",
+          initialValue: false,
+        }),
+      ],
+    }),
+    defineField({
       name: "visibility",
       title: "Publishing",
       type: "object",

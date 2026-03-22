@@ -30,6 +30,7 @@ import {
 import { getFavoriteIdsFromCookieStore } from "@/lib/api/favoriteCookie";
 import { listRecipeFavoriteIds } from "@/lib/api/favorites";
 import { formatRecipeCostMoney } from "@/lib/recipeCosting";
+import { getRecipeNutritionWorkflow } from "@/lib/recipeNutrition";
 import { getServerAccessSession } from "@/lib/api/serverSession";
 import { pickFirstQueryParam } from "@/lib/searchParams";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ type RecipeDetailSearchParams = {
   collection?: string | string[];
   returnTo?: string | string[];
   costing?: string | string[];
+  nutrition?: string | string[];
 };
 
 function parseAudience(value?: string): RecipeAudienceFilter | null {
@@ -67,15 +69,6 @@ function getAllowedAudience(
   if (canViewPublic && canViewEnterprise) return "public";
   if (canViewPublic) return "public";
   return "enterprise";
-}
-
-function readNumeric(map: Record<string, number> | undefined, keys: string[]) {
-  if (!map) return null;
-  for (const key of keys) {
-    const value = map[key];
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-  }
-  return null;
 }
 
 function formatNumber(value: number | null) {
@@ -154,7 +147,9 @@ export default async function RecipePage({
   const collection = (pickFirstQueryParam(sp.collection) ?? "").trim();
   const returnTo = resolveReturnTo(pickFirstQueryParam(sp.returnTo));
   const from = (pickFirstQueryParam(sp.from) ?? "").trim();
+  const nutritionState = (pickFirstQueryParam(sp.nutrition) ?? "").trim();
   const isOwner = session.user.role === "owner";
+  const nutritionSaved = nutritionState === "saved";
   const audience = getAllowedAudience(
     requestedAudience,
     session.entitlements.can_view_public,
@@ -217,70 +212,43 @@ export default async function RecipePage({
   let recipeCostSummary: Awaited<ReturnType<typeof getRecipeCostSummary>> =
     null;
   let costingUnavailableReason = "";
-  if (isOwner) {
-    try {
-      recipeCostSummary = await getRecipeCostSummary(recipe);
-    } catch (error) {
+  try {
+    recipeCostSummary = await getRecipeCostSummary(recipe);
+  } catch (error) {
+    if (isOwner) {
       costingUnavailableReason =
         error instanceof Error
           ? error.message
           : "Recipe costing is unavailable.";
     }
   }
+  const showRecipeCostingCard =
+    isOwner || Boolean(recipeCostSummary) || Boolean(costingUnavailableReason);
+  const nutritionWorkflow = getRecipeNutritionWorkflow({
+    nutrition: recipe.nutrition,
+    nutritionMeta: recipe.nutritionMeta,
+    sourcePdfPath: recipe.source?.pdfPath ?? null,
+  });
 
   const method = recipe.method as unknown as
     | Array<{ _type?: string; [key: string]: unknown }>
     | { steps?: Array<{ number?: number; text?: string }>; text?: string };
 
   const portionWeight =
-    recipe.portionNetWeightG ?? recipe.nutrition?.portionNetWeightG ?? null;
-  const per100g = recipe.nutrition?.per100g;
-  const perServing = recipe.nutrition?.perServing;
-  const riPercent = recipe.nutrition?.riPercent;
-
-  const energyKjPer100g = readNumeric(per100g, [
-    "energyKj",
-    "energy_kj",
-    "kj",
-    "kJ",
-  ]);
-  const energyKcalPer100g = readNumeric(per100g, [
-    "energyKcal",
-    "energy_kcal",
-    "kcal",
-    "kCal",
-  ]);
-
-  const energyKjPerServing = readNumeric(perServing, [
-    "energyKj",
-    "energy_kj",
-    "kj",
-    "kJ",
-  ]);
-  const energyKcalPerServing = readNumeric(perServing, [
-    "energyKcal",
-    "energy_kcal",
-    "kcal",
-    "kCal",
-  ]);
-  const fatPerServing = readNumeric(perServing, ["fatG", "fat_g", "fat"]);
-  const saturatesPerServing = readNumeric(perServing, [
-    "saturatesG",
-    "saturates_g",
-    "saturates",
-  ]);
-  const sugarsPerServing = readNumeric(perServing, [
-    "sugarsG",
-    "sugars_g",
-    "sugars",
-  ]);
-  const saltPerServing = readNumeric(perServing, ["saltG", "salt_g", "salt"]);
-
-  const riEnergy = readNumeric(riPercent, ["energy"]);
-  const riFat = readNumeric(riPercent, ["fat"]);
-  const riSaturates = readNumeric(riPercent, ["saturates"]);
-  const riSugars = readNumeric(riPercent, ["sugars"]);
-  const riSalt = readNumeric(riPercent, ["salt"]);
+    recipe.portionNetWeightG ?? nutritionWorkflow.nutrition.portionNetWeightG ?? null;
+  const energyKjPer100g = nutritionWorkflow.nutrition.per100g.energyKj;
+  const energyKcalPer100g = nutritionWorkflow.nutrition.per100g.energyKcal;
+  const energyKjPerServing = nutritionWorkflow.nutrition.perServing.energyKj;
+  const energyKcalPerServing = nutritionWorkflow.nutrition.perServing.energyKcal;
+  const fatPerServing = nutritionWorkflow.nutrition.perServing.fatG;
+  const saturatesPerServing = nutritionWorkflow.nutrition.perServing.saturatesG;
+  const sugarsPerServing = nutritionWorkflow.nutrition.perServing.sugarsG;
+  const saltPerServing = nutritionWorkflow.nutrition.perServing.saltG;
+  const riEnergy = nutritionWorkflow.nutrition.riPercent.energy;
+  const riFat = nutritionWorkflow.nutrition.riPercent.fat;
+  const riSaturates = nutritionWorkflow.nutrition.riPercent.saturates;
+  const riSugars = nutritionWorkflow.nutrition.riPercent.sugars;
+  const riSalt = nutritionWorkflow.nutrition.riPercent.salt;
   const containedAllergens = listContainedAllergenLabels(recipe.allergens);
 
   const ingredientRows = Array.isArray(recipe.ingredients)
@@ -373,6 +341,9 @@ export default async function RecipePage({
                 >
                   Enterprise {recipe.visibility?.enterprise ? "ON" : "OFF"}
                 </Badge>
+                <Badge variant={nutritionWorkflow.badgeVariant}>
+                  {nutritionWorkflow.badgeLabel}
+                </Badge>
               </div>
             ) : null}
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -413,6 +384,11 @@ export default async function RecipePage({
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
+            {nutritionSaved ? (
+              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900 print:hidden">
+                Nutrition estimate saved to Sanity.
+              </div>
+            ) : null}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-start">
               <div className="aspect-4/3 overflow-hidden rounded-xl border border-border/70 bg-muted/20 lg:aspect-6/5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -481,31 +457,35 @@ export default async function RecipePage({
                   </p>
                 </div>
 
-                {isOwner ? (
+                {showRecipeCostingCard ? (
                   <div className="rounded-xl border border-border/70 bg-background/60 p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="space-x-1">
+                      <div className="space-y-1">
                         <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                           Recipe costing
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {recipeCostSummary ? "Edit" : "Cost"}
-                        </p>
+                        {isOwner ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            {recipeCostSummary ? "Edit" : "Cost"}
+                          </p>
+                        ) : null}
                       </div>
-                      <Link
-                        href={costingHref}
-                        className={`${cn(
-                          buttonVariants({ variant: "ghost", size: "sm" }),
-                        )}`}
-                        aria-label={
-                          recipeCostSummary ? "Edit costing" : "Cost recipe"
-                        }
-                        title={
-                          recipeCostSummary ? "Edit costing" : "Cost recipe"
-                        }
-                      >
-                        <EditIcon className="h-4 w-4" aria-hidden="true" />
-                      </Link>
+                      {isOwner ? (
+                        <Link
+                          href={costingHref}
+                          className={`${cn(
+                            buttonVariants({ variant: "ghost", size: "sm" }),
+                          )}`}
+                          aria-label={
+                            recipeCostSummary ? "Edit costing" : "Cost recipe"
+                          }
+                          title={
+                            recipeCostSummary ? "Edit costing" : "Cost recipe"
+                          }
+                        >
+                          <EditIcon className="h-4 w-4" aria-hidden="true" />
+                        </Link>
+                      ) : null}
                     </div>
 
                     {costingUnavailableReason ? (
@@ -560,145 +540,167 @@ export default async function RecipePage({
 
       <MotionReveal delay={0.06}>
         <Card className="mb-6 print:break-inside-avoid print:shadow-none">
-          <CardHeader>
-            <CardTitle className="text-lg">Nutrition</CardTitle>
-            <CardDescription>
-              Presented from the recipe nutrition data.
-            </CardDescription>
+          <CardHeader className="space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle className="text-lg">Nutrition</CardTitle>
+                <CardDescription>
+                  {nutritionWorkflow.statusDescription}
+                </CardDescription>
+              </div>
+              <Badge variant={nutritionWorkflow.badgeVariant}>
+                {nutritionWorkflow.badgeLabel}
+              </Badge>
+            </div>
+            {isOwner ? (
+              <p className="text-sm text-muted-foreground">
+                {nutritionWorkflow.guidance}
+              </p>
+            ) : null}
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Per 100g
-              </p>
-              <div className="mt-2 space-y-1 text-sm">
-                <p>
-                  Energy:{" "}
-                  <span className="font-medium">
-                    {formatNumber(energyKjPer100g)}
-                  </span>{" "}
-                  kJ
-                </p>
-                <p>
-                  Energy:{" "}
-                  <span className="font-medium">
-                    {formatNumber(energyKcalPer100g)}
-                  </span>{" "}
-                  kcal
-                </p>
-              </div>
-            </div>
+          {nutritionWorkflow.canShowNutritionCard ? (
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Per 100g
+                  </p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <p>
+                      Energy:{" "}
+                      <span className="font-medium">
+                        {formatNumber(energyKjPer100g)}
+                      </span>{" "}
+                      kJ
+                    </p>
+                    <p>
+                      Energy:{" "}
+                      <span className="font-medium">
+                        {formatNumber(energyKcalPer100g)}
+                      </span>{" "}
+                      kcal
+                    </p>
+                  </div>
+                </div>
 
-            <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Per serving
-              </p>
-              <div className="mt-2 space-y-1 text-sm">
-                <p>
-                  Energy:{" "}
-                  <span className="font-medium">
-                    {formatNumber(energyKjPerServing)}
-                  </span>{" "}
-                  kJ /{" "}
-                  <span className="font-medium">
-                    {formatNumber(energyKcalPerServing)}
-                  </span>{" "}
-                  kcal
-                </p>
-                <p>
-                  Fat:{" "}
-                  <span className="font-medium">
-                    {formatNumber(fatPerServing)}
-                  </span>{" "}
-                  g
-                </p>
-                <p>
-                  Saturates:{" "}
-                  <span className="font-medium">
-                    {formatNumber(saturatesPerServing)}
-                  </span>{" "}
-                  g
-                </p>
-                <p>
-                  Sugars:{" "}
-                  <span className="font-medium">
-                    {formatNumber(sugarsPerServing)}
-                  </span>{" "}
-                  g
-                </p>
-                <p>
-                  Salt:{" "}
-                  <span className="font-medium">
-                    {formatNumber(saltPerServing)}
-                  </span>{" "}
-                  g
-                </p>
-              </div>
-            </div>
+                <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Per serving
+                  </p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <p>
+                      Energy:{" "}
+                      <span className="font-medium">
+                        {formatNumber(energyKjPerServing)}
+                      </span>{" "}
+                      kJ /{" "}
+                      <span className="font-medium">
+                        {formatNumber(energyKcalPerServing)}
+                      </span>{" "}
+                      kcal
+                    </p>
+                    <p>
+                      Fat:{" "}
+                      <span className="font-medium">
+                        {formatNumber(fatPerServing)}
+                      </span>{" "}
+                      g
+                    </p>
+                    <p>
+                      Saturates:{" "}
+                      <span className="font-medium">
+                        {formatNumber(saturatesPerServing)}
+                      </span>{" "}
+                      g
+                    </p>
+                    <p>
+                      Sugars:{" "}
+                      <span className="font-medium">
+                        {formatNumber(sugarsPerServing)}
+                      </span>{" "}
+                      g
+                    </p>
+                    <p>
+                      Salt:{" "}
+                      <span className="font-medium">
+                        {formatNumber(saltPerServing)}
+                      </span>{" "}
+                      g
+                    </p>
+                  </div>
+                </div>
 
-            <div className="rounded-lg border border-border/70 bg-background/60 p-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Reference intake
-              </p>
-              <div className="mt-2 space-y-1 text-sm">
-                <p className="flex items-center justify-between gap-2">
-                  <span>Energy</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                      trafficLightClass(riEnergy),
-                    )}
-                  >
-                    {formatRiLabel(riEnergy)}
-                  </span>
-                </p>
-                <p className="flex items-center justify-between gap-2">
-                  <span>Fat</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                      trafficLightClass(riFat),
-                    )}
-                  >
-                    {formatRiLabel(riFat)}
-                  </span>
-                </p>
-                <p className="flex items-center justify-between gap-2">
-                  <span>Saturates</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                      trafficLightClass(riSaturates),
-                    )}
-                  >
-                    {formatRiLabel(riSaturates)}
-                  </span>
-                </p>
-                <p className="flex items-center justify-between gap-2">
-                  <span>Sugars</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                      trafficLightClass(riSugars),
-                    )}
-                  >
-                    {formatRiLabel(riSugars)}
-                  </span>
-                </p>
-                <p className="flex items-center justify-between gap-2">
-                  <span>Salt</span>
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
-                      trafficLightClass(riSalt),
-                    )}
-                  >
-                    {formatRiLabel(riSalt)}
-                  </span>
-                </p>
+                <div className="rounded-lg border border-border/70 bg-background/60 p-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Reference intake
+                  </p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <p className="flex items-center justify-between gap-2">
+                      <span>Energy</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                          trafficLightClass(riEnergy),
+                        )}
+                      >
+                        {formatRiLabel(riEnergy)}
+                      </span>
+                    </p>
+                    <p className="flex items-center justify-between gap-2">
+                      <span>Fat</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                          trafficLightClass(riFat),
+                        )}
+                      >
+                        {formatRiLabel(riFat)}
+                      </span>
+                    </p>
+                    <p className="flex items-center justify-between gap-2">
+                      <span>Saturates</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                          trafficLightClass(riSaturates),
+                        )}
+                      >
+                        {formatRiLabel(riSaturates)}
+                      </span>
+                    </p>
+                    <p className="flex items-center justify-between gap-2">
+                      <span>Sugars</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                          trafficLightClass(riSugars),
+                        )}
+                      >
+                        {formatRiLabel(riSugars)}
+                      </span>
+                    </p>
+                    <p className="flex items-center justify-between gap-2">
+                      <span>Salt</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold",
+                          trafficLightClass(riSalt),
+                        )}
+                      >
+                        {formatRiLabel(riSalt)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </CardContent>
+            </CardContent>
+          ) : (
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {nutritionWorkflow.guidance}
+              </p>
+            </CardContent>
+          )}
         </Card>
       </MotionReveal>
 

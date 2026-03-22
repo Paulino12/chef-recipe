@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getServerAccessSession } from "@/lib/api/serverSession";
+import { saveEstimatedRecipeNutrition } from "@/lib/api/recipeNutrition";
 import {
   deleteRecipeCosting,
   getRecipeCosting,
@@ -171,6 +172,37 @@ export async function deleteRecipeCostingAction(formData: FormData) {
     revalidatePath("/owner");
 
     redirect(withQuery(returnTo, "costing", "deleted"));
+  } catch (error) {
+    if (isNextRedirectError(error)) throw error;
+    redirect(withQuery(fallbackReturnTo, "error", normalizeErrorMessage(error)));
+  }
+}
+
+export async function saveRecipeNutritionEstimateAction(formData: FormData) {
+  const session = await getServerAccessSession();
+  if (!session) redirect("/signin?next=%2Fowner");
+  assertOwnerRole(session.user.role);
+
+  const recipeId = String(formData.get("recipeId") ?? "").trim();
+  const fallbackReturnTo = `/owner/costing/${encodeURIComponent(recipeId)}`;
+  const returnTo = parseReturnTo(formData.get("returnTo"), fallbackReturnTo);
+
+  try {
+    if (!recipeId) {
+      throw new Error("Missing recipe id.");
+    }
+
+    const recipe = await getRecipeById(recipeId);
+    if (!recipe) {
+      throw new Error("Recipe not found.");
+    }
+
+    await saveEstimatedRecipeNutrition({ recipe });
+
+    revalidatePath(`/owner/costing/${recipe.id}`);
+    revalidatePath(`/recipes/${recipe.id}`);
+
+    redirect(withQuery(returnTo, "nutrition", "saved"));
   } catch (error) {
     if (isNextRedirectError(error)) throw error;
     redirect(withQuery(fallbackReturnTo, "error", normalizeErrorMessage(error)));

@@ -38,6 +38,11 @@ export async function GET(req: NextRequest) {
     visibilityFilterParam === "both_off"
       ? visibilityFilterParam
       : undefined;
+  const costingFilterParam = (searchParams.get("costing") ?? "").trim();
+  const costingFilter =
+    costingFilterParam === "with" || costingFilterParam === "without"
+      ? costingFilterParam
+      : undefined;
   const page = Number(searchParams.get("page") ?? "1");
   const pageSize = Number(searchParams.get("pageSize") ?? "10");
 
@@ -49,6 +54,7 @@ export async function GET(req: NextRequest) {
       collection,
       imageFilter,
       visibilityFilter,
+      costingFilter,
     });
     return NextResponse.json(recipes);
   } catch (error) {

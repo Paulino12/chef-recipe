@@ -11,6 +11,10 @@ import { Input } from "@/components/ui/input";
 import { LinkedFormSubmitButton } from "@/components/ui/linked-form-submit-button";
 import { MotionReveal } from "@/components/motion/reveal";
 import { listIngredientCatalogEntries } from "@/lib/api/costingCatalog";
+import {
+  getNutritionCatalogStatus,
+  listNutritionCatalogEntries,
+} from "@/lib/api/nutritionCatalog";
 import { getRecipeCosting, listCostedRecipesSearch } from "@/lib/api/recipeCostings";
 import { getServerAccessSession } from "@/lib/api/serverSession";
 import { extractPtnReference, findSubRecipeTargets, getRecipeById } from "@/lib/recipes";
@@ -24,12 +28,17 @@ import {
   type ResolvedSubRecipeCosting,
   type ResolvedSubRecipeTarget,
 } from "@/lib/recipeCosting";
+import {
+  estimateRecipeNutrition,
+  getRecipeNutritionWorkflow,
+} from "@/lib/recipeNutrition";
 import { pickFirstQueryParam } from "@/lib/searchParams";
 import { cn } from "@/lib/utils";
 
 import {
   copyRecipeCostingAction,
   deleteRecipeCostingAction,
+  saveRecipeNutritionEstimateAction,
   saveRecipeCostingAction,
 } from "./actions";
 
@@ -38,6 +47,7 @@ type CostingSearchParams = {
   error?: string | string[];
   copiedFrom?: string | string[];
   costing?: string | string[];
+  nutrition?: string | string[];
   returnTo?: string | string[];
 };
 
@@ -48,6 +58,12 @@ function formatUpdatedAt(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatNutritionNumber(value: number | null) {
+  if (value === null) return "-";
+  const rounded = Number(value.toFixed(1));
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
 function recipeDetailHref(recipeId: string, collection: string) {
@@ -89,9 +105,11 @@ export default async function OwnerRecipeCostingPage({
   const errorMessage = (pickFirstQueryParam(sp.error) ?? "").trim();
   const copiedFrom = (pickFirstQueryParam(sp.copiedFrom) ?? "").trim();
   const costingState = (pickFirstQueryParam(sp.costing) ?? "").trim();
+  const nutritionState = (pickFirstQueryParam(sp.nutrition) ?? "").trim();
   const returnTo = resolveReturnTo(pickFirstQueryParam(sp.returnTo));
   const costingSaved = costingState === "saved";
   const costingDeleted = costingState === "deleted";
+  const nutritionSaved = nutritionState === "saved";
 
   const recipe = await getRecipeById(id);
   if (!recipe) {
@@ -117,6 +135,13 @@ export default async function OwnerRecipeCostingPage({
   const backToRecipeHref = returnTo ?? recipeDetailHref(recipe.id, recipe.collection);
   const currentCostingHref = buildCurrentCostingHref(recipe.id, q, backToRecipeHref);
   const currentFingerprint = buildRecipeIngredientFingerprint(recipe.ingredients);
+  const nutritionCatalogStatus = await getNutritionCatalogStatus();
+  const nutritionWorkflow = getRecipeNutritionWorkflow({
+    nutrition: recipe.nutrition,
+    nutritionMeta: recipe.nutritionMeta,
+    sourcePdfPath: recipe.source?.pdfPath ?? null,
+    nutritionCatalogConnected: nutritionCatalogStatus.configured,
+  });
   const ingredientRows = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
   const subRecipeLabels: Array<string | null> = ingredientRows.map(
     (ingredient: (typeof ingredientRows)[number]) =>
@@ -132,6 +157,8 @@ export default async function OwnerRecipeCostingPage({
   let ingredientCatalog = [] as Awaited<ReturnType<typeof listIngredientCatalogEntries>>;
   let resolvedSubRecipeCostings = [] as Array<ResolvedSubRecipeCosting | null>;
   let resolvedSubRecipeTargets = [] as Array<ResolvedSubRecipeTarget | null>;
+  let nutritionEstimate = null as ReturnType<typeof estimateRecipeNutrition> | null;
+  let nutritionEstimateError = "";
 
   try {
     [savedCosting, costedRecipes, ingredientCatalog] = await Promise.all([
@@ -199,6 +226,20 @@ export default async function OwnerRecipeCostingPage({
     }
   } catch (error) {
     setupError = error instanceof Error ? error.message : "Recipe costing is unavailable.";
+  }
+
+  try {
+    const nutritionCatalog = await listNutritionCatalogEntries();
+    nutritionEstimate = estimateRecipeNutrition({
+      ingredients: recipe.ingredients,
+      portions: recipe.portions,
+      portionNetWeightG:
+        recipe.portionNetWeightG ?? recipe.nutrition?.portionNetWeightG ?? null,
+      catalog: nutritionCatalog,
+    });
+  } catch (error) {
+    nutritionEstimateError =
+      error instanceof Error ? error.message : "Nutrition estimate is unavailable.";
   }
 
   const initialLines = (
@@ -272,6 +313,164 @@ export default async function OwnerRecipeCostingPage({
       {!setupError ? (
         <div className="mt-6">
           <MotionReveal delay={0.06}>
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={nutritionWorkflow.badgeVariant}>
+                    {nutritionWorkflow.badgeLabel}
+                  </Badge>
+                  <Badge
+                    variant={nutritionCatalogStatus.configured ? "success" : "outline"}
+                  >
+                    {nutritionCatalogStatus.configured
+                      ? "Nutrition catalog connected"
+                      : "Nutrition catalog not connected"}
+                  </Badge>
+                </div>
+                <CardTitle className="text-lg">Nutrition workflow</CardTitle>
+                <CardDescription>
+                  {nutritionWorkflow.statusDescription}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  {nutritionWorkflow.guidance}
+                </p>
+
+                {nutritionSaved ? (
+                  <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
+                    Nutrition estimate saved. The recipe page now reads this nutrition from Sanity.
+                  </div>
+                ) : null}
+
+                {!nutritionCatalogStatus.configured ? (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                    This preview is ready, but automatic nutrition estimates will not run until an
+                    ingredient-level nutrition catalog is added to the app.
+                  </div>
+                ) : null}
+
+                {nutritionEstimateError ? (
+                  <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-rose-900">
+                    {nutritionEstimateError}
+                  </div>
+                ) : nutritionEstimate && nutritionEstimate.status !== "unavailable" ? (
+                  <div className="rounded-lg border border-sky-300 bg-sky-50 p-4 text-sky-950">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        variant={
+                          nutritionEstimate.status === "ready" ? "success" : "secondary"
+                        }
+                      >
+                        {nutritionEstimate.status === "ready"
+                          ? "Estimate ready"
+                          : "Partial estimate"}
+                      </Badge>
+                      <p className="text-sm">
+                        {nutritionEstimate.matchedIngredientCount}/
+                        {nutritionEstimate.totalIngredientCount} ingredients matched
+                      </p>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <div className="flex min-h-24 flex-col justify-between rounded-md border border-sky-200 bg-white/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-sky-700">
+                          kcal / serving
+                        </p>
+                        <p className="mt-3 text-lg font-semibold tabular-nums">
+                          {formatNutritionNumber(nutritionEstimate.perServing.energyKcal)}
+                        </p>
+                      </div>
+                      <div className="flex min-h-24 flex-col justify-between rounded-md border border-sky-200 bg-white/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-sky-700">
+                          Fat / serving
+                        </p>
+                        <p className="mt-3 text-lg font-semibold tabular-nums">
+                          {formatNutritionNumber(nutritionEstimate.perServing.fatG)} g
+                        </p>
+                      </div>
+                      <div className="flex min-h-24 flex-col justify-between rounded-md border border-sky-200 bg-white/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-sky-700">
+                          Sugars / serving
+                        </p>
+                        <p className="mt-3 text-lg font-semibold tabular-nums">
+                          {formatNutritionNumber(nutritionEstimate.perServing.sugarsG)} g
+                        </p>
+                      </div>
+                      <div className="flex min-h-24 flex-col justify-between rounded-md border border-sky-200 bg-white/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-sky-700">
+                          Salt / serving
+                        </p>
+                        <p className="mt-3 text-lg font-semibold tabular-nums">
+                          {formatNutritionNumber(nutritionEstimate.perServing.saltG)} g
+                        </p>
+                      </div>
+                      <div className="flex min-h-24 flex-col justify-between rounded-md border border-sky-200 bg-white/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-sky-700">
+                          kJ / serving
+                        </p>
+                        <p className="mt-3 text-base font-semibold tabular-nums">
+                          {formatNutritionNumber(nutritionEstimate.perServing.energyKj)}
+                        </p>
+                      </div>
+                      <div className="flex min-h-24 flex-col justify-between rounded-md border border-sky-200 bg-white/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-sky-700">
+                          kcal / 100g
+                        </p>
+                        <p className="mt-3 text-base font-semibold tabular-nums">
+                          {formatNutritionNumber(nutritionEstimate.per100g.energyKcal)}
+                        </p>
+                      </div>
+                      <div className="flex min-h-24 flex-col justify-between rounded-md border border-sky-200 bg-white/70 p-3">
+                        <p className="text-[11px] uppercase tracking-wide text-sky-700">
+                          Energy RI
+                        </p>
+                        <p className="mt-3 text-base font-semibold tabular-nums">
+                          {formatNutritionNumber(nutritionEstimate.riPercent.energy)}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {nutritionEstimate.unmatchedItems.length > 0 ? (
+                      <p className="mt-4 text-sm text-sky-900">
+                        Still needs review for: {nutritionEstimate.unmatchedItems.join(", ")}
+                      </p>
+                    ) : null}
+
+                    {nutritionEstimate.notes.length > 0 ? (
+                      <ul className="mt-3 space-y-1 text-sm text-sky-900">
+                        {nutritionEstimate.notes.map((note) => (
+                          <li key={note}>{note}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : nutritionCatalogStatus.configured ? (
+                  <div className="rounded-lg border border-dashed border-border/70 bg-background/40 p-3 text-sm text-muted-foreground">
+                    The catalog loaded, but this recipe does not have enough matched weighted
+                    ingredients for an estimate yet.
+                  </div>
+                ) : null}
+
+                {nutritionEstimate && nutritionEstimate.status !== "unavailable" ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <form action={saveRecipeNutritionEstimateAction}>
+                      <input type="hidden" name="recipeId" value={recipe.id} />
+                      <input type="hidden" name="returnTo" value={backToRecipeHref} />
+                      <FormSubmitButton pendingText="Saving nutrition">
+                        Save nutrition estimate
+                      </FormSubmitButton>
+                    </form>
+                    <p className="text-xs text-muted-foreground">
+                      This saves the current estimate into the recipe&apos;s Sanity nutrition fields.
+                    </p>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </MotionReveal>
+
+          <MotionReveal delay={0.08}>
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Manual costing</CardTitle>
