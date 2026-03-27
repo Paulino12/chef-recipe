@@ -1,6 +1,5 @@
 ﻿import Link from "next/link";
 import { redirect } from "next/navigation";
-import Image from "next/image";
 
 import { MotionReveal } from "@/components/motion/reveal";
 import { OwnerVisibilityButton } from "@/components/owner-visibility-button";
@@ -469,12 +468,12 @@ export default async function OwnerPage({
                     <td className="px-4 py-3">
                       <div className="flex items-start gap-3">
                         <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border/70 bg-muted/40">
-                          <Image
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
                             src={(recipe.imageUrl ?? "/recipe-placeholder.svg").trim() || "/recipe-placeholder.svg"}
                             alt={recipe.title}
-                            fill
-                            sizes="48px"
-                            className="object-cover"
+                            loading="lazy"
+                            className="h-full w-full object-cover"
                           />
                         </div>
                         <div className="min-w-0">
