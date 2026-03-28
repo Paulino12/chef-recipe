@@ -168,6 +168,124 @@ function normalizeStringArray(value: unknown) {
   return value.map((item) => asString(item)).filter(Boolean);
 }
 
+function getIngredientDisplayText(ingredient: {
+  text?: string | null;
+  item?: string | null;
+}) {
+  return asString(ingredient.text) || asString(ingredient.item);
+}
+
+function normalizeNutritionUnit(value: string | null | undefined) {
+  const unit = asString(value).toUpperCase();
+
+  switch (unit) {
+    case "G":
+    case "GRAM":
+    case "GRAMS":
+      return "G";
+    case "KG":
+    case "KGS":
+    case "KILO":
+    case "KILOS":
+    case "KILOGRAM":
+    case "KILOGRAMS":
+      return "KG";
+    case "ML":
+    case "MLS":
+    case "MILLILITRE":
+    case "MILLILITRES":
+    case "MILLILITER":
+    case "MILLILITERS":
+      return "ML";
+    case "L":
+    case "LTR":
+    case "LTRS":
+    case "LT":
+    case "LITRE":
+    case "LITRES":
+    case "LITER":
+    case "LITERS":
+      return "L";
+    case "EA":
+    case "EACH":
+    case "UNIT":
+    case "UNITS":
+    case "ITEM":
+    case "ITEMS":
+    case "PC":
+    case "PCS":
+    case "PIECE":
+    case "PIECES":
+      return "EA";
+    case "TSP":
+    case "TSPS":
+    case "TEASPOON":
+    case "TEASPOONS":
+      return "TSP";
+    case "TBSP":
+    case "TBSPS":
+    case "TABLESPOON":
+    case "TABLESPOONS":
+      return "TBSP";
+    default:
+      return null;
+  }
+}
+
+function parseIngredientMeasurement(text: string) {
+  const trimmed = asString(text);
+  if (!trimmed) {
+    return {
+      qty: null,
+      unit: null,
+      label: "",
+    };
+  }
+
+  const match = trimmed.match(
+    /^(\d+(?:\.\d+)?)\s*([A-Za-z]+)?\s+(.+)$/,
+  );
+  if (match) {
+    if (!match[2]) {
+      return {
+        qty: asNumber(match[1]),
+        unit: "EA",
+        label: asString(match[3]) || trimmed,
+      };
+    }
+
+    const normalizedUnit = normalizeNutritionUnit(match[2] ?? "");
+    if (normalizedUnit) {
+      return {
+        qty: asNumber(match[1]),
+        unit: normalizedUnit,
+        label: asString(match[3]) || trimmed,
+      };
+    }
+
+    return {
+      qty: null,
+      unit: null,
+      label: trimmed,
+    };
+  }
+
+  const countOnlyMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+  if (countOnlyMatch) {
+    return {
+      qty: asNumber(countOnlyMatch[1]),
+      unit: "EA",
+      label: asString(countOnlyMatch[2]) || trimmed,
+    };
+  }
+
+  return {
+    qty: null,
+    unit: null,
+    label: trimmed,
+  };
+}
+
 function countPresent(values: Array<number | null>) {
   return values.reduce<number>(
     (count, value) => count + (value === null ? 0 : 1),
@@ -367,7 +485,7 @@ function resolveNutritionAmountG(
   const normalizedQty = asNumber(qty);
   if (normalizedQty === null) return null;
 
-  switch (asString(unit).toUpperCase()) {
+  switch (normalizeNutritionUnit(asString(unit))) {
     case "G":
       return normalizedQty;
     case "KG":
@@ -376,6 +494,10 @@ function resolveNutritionAmountG(
       return normalizedQty;
     case "L":
       return roundNumber(normalizedQty * 1000);
+    case "TSP":
+      return roundNumber(normalizedQty * 5);
+    case "TBSP":
+      return roundNumber(normalizedQty * 15);
     case "EA":
       if (servingSizeG) return roundNumber(normalizedQty * servingSizeG);
       if (normalizeSearchText(ingredientText).includes("egg")) {
@@ -655,13 +777,15 @@ export function estimateRecipeNutrition(options: {
 }): RecipeNutritionEstimate {
   const ingredients = Array.isArray(options.ingredients) ? options.ingredients : [];
   const totalIngredientCount = ingredients.filter((ingredient) =>
-    Boolean(asString(ingredient.item) || asString(ingredient.text)),
+    Boolean(getIngredientDisplayText(ingredient)),
   ).length;
 
   const lines = ingredients.map((ingredient) => {
-    const text = asString(ingredient.item) || asString(ingredient.text);
-    const qty = asNumber(ingredient.qty);
-    const unit = asString(ingredient.unit) || null;
+    const text = getIngredientDisplayText(ingredient);
+    const parsedMeasurement = parseIngredientMeasurement(text);
+    const qty = asNumber(ingredient.qty) ?? parsedMeasurement.qty;
+    const unit = normalizeNutritionUnit(asString(ingredient.unit)) || parsedMeasurement.unit || null;
+    const matchText = parsedMeasurement.label || text;
 
     if (!text) {
       return {
@@ -689,12 +813,12 @@ export function estimateRecipeNutrition(options: {
       };
     }
 
-    const match = findBestNutritionCatalogMatch(options.catalog, text);
+    const match = findBestNutritionCatalogMatch(options.catalog, matchText);
     const amountG = resolveNutritionAmountG(
       qty,
       unit,
       match?.entry.servingSizeG ?? null,
-      text,
+      matchText,
     );
     if (!match) {
       return {

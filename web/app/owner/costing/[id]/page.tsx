@@ -7,7 +7,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
-import { Input } from "@/components/ui/input";
+import { ClearableInput } from "@/components/ui/clearable-input";
+import { DismissibleNotice } from "@/components/ui/dismissible-notice";
 import { LinkedFormSubmitButton } from "@/components/ui/linked-form-submit-button";
 import { MotionReveal } from "@/components/motion/reveal";
 import { listIngredientCatalogEntries } from "@/lib/api/costingCatalog";
@@ -338,22 +339,25 @@ export default async function OwnerRecipeCostingPage({
                 </p>
 
                 {nutritionSaved ? (
-                  <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
+                  <DismissibleNotice
+                    variant="success"
+                    clearQueryKeys={["nutrition"]}
+                  >
                     Nutrition estimate saved. The recipe page now reads this nutrition from Sanity.
-                  </div>
+                  </DismissibleNotice>
                 ) : null}
 
                 {!nutritionCatalogStatus.configured ? (
-                  <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                  <DismissibleNotice variant="warning">
                     This preview is ready, but automatic nutrition estimates will not run until an
                     ingredient-level nutrition catalog is added to the app.
-                  </div>
+                  </DismissibleNotice>
                 ) : null}
 
                 {nutritionEstimateError ? (
-                  <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-rose-900">
+                  <DismissibleNotice variant="error">
                     {nutritionEstimateError}
-                  </div>
+                  </DismissibleNotice>
                 ) : nutritionEstimate && nutritionEstimate.status !== "unavailable" ? (
                   <div className="rounded-lg border border-sky-300 bg-sky-50 p-4 text-sky-950">
                     <div className="flex flex-wrap items-center gap-2">
@@ -446,10 +450,13 @@ export default async function OwnerRecipeCostingPage({
                     ) : null}
                   </div>
                 ) : nutritionCatalogStatus.configured ? (
-                  <div className="rounded-lg border border-dashed border-border/70 bg-background/40 p-3 text-sm text-muted-foreground">
+                  <DismissibleNotice
+                    variant="neutral"
+                    className="border-dashed bg-background/40"
+                  >
                     The catalog loaded, but this recipe does not have enough matched weighted
                     ingredients for an estimate yet.
-                  </div>
+                  </DismissibleNotice>
                 ) : null}
 
                 {nutritionEstimate && nutritionEstimate.status !== "unavailable" ? (
@@ -485,45 +492,57 @@ export default async function OwnerRecipeCostingPage({
                     Currency: <span className="font-medium">{RECIPE_COSTING_CURRENCY}</span>
                   </p>
                   {savedCosting?.status === "needs_review" ? (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                    <DismissibleNotice variant="warning">
                       Ingredients have changed since this costing was saved. Review and save again to
                       refresh it.
-                    </div>
+                    </DismissibleNotice>
                   ) : null}
                   {costingSaved ? (
-                    <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
+                    <DismissibleNotice
+                      variant="success"
+                      clearQueryKeys={["costing"]}
+                    >
                       Costing saved. The recipe page now shows the updated summary.
-                    </div>
+                    </DismissibleNotice>
                   ) : null}
                   {costingDeleted ? (
-                    <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
+                    <DismissibleNotice
+                      variant="success"
+                      clearQueryKeys={["costing"]}
+                    >
                       Costing deleted. This recipe now has no saved costing.
-                    </div>
+                    </DismissibleNotice>
                   ) : null}
                   {copiedFrom ? (
-                    <div className="rounded-lg border border-sky-300 bg-sky-50 p-3 text-sky-900">
+                    <DismissibleNotice
+                      variant="info"
+                      clearQueryKeys={["copiedFrom"]}
+                    >
                       Costing copied from {copiedFrom}. Review the lines below and save any changes you
                       want to keep.
-                    </div>
+                    </DismissibleNotice>
                   ) : null}
                   {errorMessage ? (
-                    <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-rose-900">
+                    <DismissibleNotice
+                      variant="error"
+                      clearQueryKeys={["error"]}
+                    >
                       {errorMessage}
-                    </div>
+                    </DismissibleNotice>
                   ) : null}
                   {resolvedSubRecipeCount > 0 ? (
-                    <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
+                    <DismissibleNotice variant="success">
                       {resolvedSubRecipeCount} PTN sub-recipe
                       {resolvedSubRecipeCount === 1 ? " line has" : " lines have"} been auto-filled from
                       saved sub-recipe costing.
-                    </div>
+                    </DismissibleNotice>
                   ) : null}
                   {unresolvedSubRecipeCount > 0 ? (
-                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900">
+                    <DismissibleNotice variant="warning">
                       {unresolvedSubRecipeCount} PTN sub-recipe
                       {unresolvedSubRecipeCount === 1 ? " line does" : " lines do"} not have a saved
                       sub-recipe costing yet, so those lines still need manual costing.
-                    </div>
+                    </DismissibleNotice>
                   ) : null}
                 </div>
 
@@ -593,7 +612,7 @@ export default async function OwnerRecipeCostingPage({
                         Search by title or RN
                       </label>
                       <div className="flex gap-2">
-                        <Input
+                        <ClearableInput
                           id="q"
                           name="q"
                           defaultValue={q}
@@ -668,9 +687,9 @@ export default async function OwnerRecipeCostingPage({
         <MotionReveal delay={0.06}>
           <Card className="mt-6">
             <CardContent className="pt-6">
-              <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-rose-900">
+              <DismissibleNotice variant="error">
                 {setupError}
-              </div>
+              </DismissibleNotice>
             </CardContent>
           </Card>
         </MotionReveal>

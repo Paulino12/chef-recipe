@@ -7,7 +7,7 @@ import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
-import { Input } from "@/components/ui/input";
+import { ClearableInput } from "@/components/ui/clearable-input";
 import { getInternalApiOrigin } from "@/lib/api/origin";
 import { buildCompactPagination } from "@/lib/pagination";
 import { formatAccessStatusLabel } from "@/lib/billing";
@@ -187,7 +187,7 @@ export default async function OwnerSubscribersPage({
                   <label className="mb-2 block text-sm font-medium" htmlFor="q">
                     Search by name or email
                   </label>
-                  <Input
+                  <ClearableInput
                     id="q"
                     name="q"
                     defaultValue={q}

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { MotionReveal, MotionStaggerItem, MotionStaggerList } from "@/components/motion/reveal";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ClearableInput } from "@/components/ui/clearable-input";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { getFavoriteIdsFromCookieStore } from "@/lib/api/favoriteCookie";
 import { listRecipeFavoriteIds } from "@/lib/api/favorites";
@@ -390,7 +390,7 @@ export default async function RecipesPage({
                     <label className="mb-2 block text-sm font-medium" htmlFor="q">
                       Search by title
                     </label>
-                    <Input
+                    <ClearableInput
                       id="q"
                       name="q"
                       defaultValue={q}

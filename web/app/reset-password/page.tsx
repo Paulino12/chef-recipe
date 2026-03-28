@@ -8,6 +8,7 @@ import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DismissibleNotice } from "@/components/ui/dismissible-notice";
 import { Input } from "@/components/ui/input";
 import {
   clearServerAuthSession,
@@ -101,13 +102,13 @@ export default function ResetPasswordPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {!sessionReady ? (
-              <div className="rounded-lg border border-border/70 bg-background/70 p-4 text-sm text-muted-foreground">
+              <DismissibleNotice variant="neutral" className="p-4">
                 Open this page from the password reset email. If the link expired, request a new reset from{" "}
                 <Link href="/signin" className="link-hover font-medium text-foreground">
                   sign in
                 </Link>
                 .
-              </div>
+              </DismissibleNotice>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -151,8 +152,8 @@ export default function ResetPasswordPage() {
               </form>
             )}
 
-            {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
+            {message ? <DismissibleNotice variant="success">{message}</DismissibleNotice> : null}
+            {error ? <DismissibleNotice variant="error">{error}</DismissibleNotice> : null}
           </CardContent>
         </Card>
       </MotionReveal>

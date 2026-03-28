@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { MotionReveal } from "@/components/motion/reveal";
 import { buttonVariants } from "@/components/ui/button";
+import { DismissibleNotice } from "@/components/ui/dismissible-notice";
 import { RelatedRecipesCarousel } from "@/components/related-recipes-carousel";
 import {
   Card,
@@ -421,11 +422,15 @@ export default async function RecipePage({
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-0">
-            {nutritionSaved ? (
-              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900 print:hidden">
-                Nutrition estimate saved to Sanity.
-              </div>
-            ) : null}
+              {nutritionSaved ? (
+                <DismissibleNotice
+                  variant="success"
+                  clearQueryKeys={["nutrition"]}
+                  className="print:hidden"
+                >
+                  Nutrition estimate saved to Sanity.
+                </DismissibleNotice>
+              ) : null}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-start">
               <div className="aspect-4/3 overflow-hidden rounded-xl border border-border/70 bg-muted/20 lg:aspect-6/5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

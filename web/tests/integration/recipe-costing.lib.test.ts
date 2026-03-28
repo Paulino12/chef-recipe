@@ -14,4 +14,12 @@ describe("calculateCatalogLineCost unit normalization", () => {
   it("converts litre aliases into millilitre-based pricing", () => {
     expect(calculateCatalogLineCost(1.5, "ltrs", 0.002)).toBe(3);
   });
+
+  it("converts teaspoon aliases using kitchen volume", () => {
+    expect(calculateCatalogLineCost(4, "tsp", 0.01)).toBe(0.2);
+  });
+
+  it("converts tablespoon aliases using kitchen volume", () => {
+    expect(calculateCatalogLineCost(3, "tbsp", 0.01)).toBe(0.45);
+  });
 });

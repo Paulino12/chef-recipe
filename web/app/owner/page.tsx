@@ -7,7 +7,7 @@ import { OwnerVisibilitySwitch } from "@/components/owner-visibility-switch";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ClearableInput } from "@/components/ui/clearable-input";
 import { type AdminRecipesResult } from "@/lib/api/adminRecipes";
 import { getInternalApiOrigin } from "@/lib/api/origin";
 import { listRecipeCostingSummariesByIds } from "@/lib/api/recipeCostings";
@@ -266,7 +266,7 @@ export default async function OwnerPage({
                   <label className="mb-2 block text-sm font-medium" htmlFor="q">
                     Search by title
                   </label>
-                  <Input
+                  <ClearableInput
                     id="q"
                     name="q"
                     defaultValue={q}

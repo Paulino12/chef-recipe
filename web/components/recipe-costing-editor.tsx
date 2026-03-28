@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { ClearableInput } from "@/components/ui/clearable-input";
 import { Input } from "@/components/ui/input";
 import {
   applyCatalogEntryToRecipeCostLine,
@@ -430,12 +431,12 @@ export function RecipeCostingEditor({
                           >
                             Ingredient
                           </label>
-                          <Input
-                            id={`catalog-search-${index}`}
-                            value={searchTerms[index] ?? ""}
-                            onChange={(event) => {
-                              const nextValue = event.target.value;
-                              setSearchTerms((current) =>
+                            <ClearableInput
+                              id={`catalog-search-${index}`}
+                              value={searchTerms[index] ?? ""}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setSearchTerms((current) =>
                                 current.map((term, currentIndex) =>
                                   currentIndex === index ? nextValue : term,
                                 ),

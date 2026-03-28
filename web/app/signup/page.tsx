@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { DismissibleNotice } from "@/components/ui/dismissible-notice";
 import {
   Card,
   CardContent,
@@ -131,10 +132,8 @@ export default function SignUpPage() {
               </div>
             </form>
 
-            {message ? (
-              <p className="text-sm text-emerald-700">{message}</p>
-            ) : null}
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
+            {message ? <DismissibleNotice variant="success">{message}</DismissibleNotice> : null}
+            {error ? <DismissibleNotice variant="error">{error}</DismissibleNotice> : null}
           </CardContent>
         </Card>
       </MotionReveal>

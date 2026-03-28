@@ -179,6 +179,16 @@ function normalizeCostingUnit(value: string | null | undefined) {
     case "PORTION":
     case "PORTIONS":
       return "PTN";
+    case "TSP":
+    case "TSPS":
+    case "TEASPOON":
+    case "TEASPOONS":
+      return "TSP";
+    case "TBSP":
+    case "TBSPS":
+    case "TABLESPOON":
+    case "TABLESPOONS":
+      return "TBSP";
     default:
       return normalizedUnit;
   }
@@ -340,6 +350,12 @@ export function calculateCatalogLineCost(
     case "EA":
     case "PTN":
       amount = normalizedQty;
+      break;
+    case "TSP":
+      amount = normalizedQty * 5;
+      break;
+    case "TBSP":
+      amount = normalizedQty * 15;
       break;
     case "KG":
     case "L":

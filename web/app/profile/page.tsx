@@ -5,6 +5,7 @@ import { MotionReveal } from "@/components/motion/reveal";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DismissibleNotice } from "@/components/ui/dismissible-notice";
 import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { Input } from "@/components/ui/input";
 import { formatAccessStatusLabel, isBillingUiEnabled } from "@/lib/billing";
@@ -110,12 +111,14 @@ export default async function ProfilePage({
             </form>
 
             {success ? (
-              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <DismissibleNotice variant="success" clearQueryKeys={["success"]}>
                 {success}
-              </div>
+              </DismissibleNotice>
             ) : null}
             {error ? (
-              <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+              <DismissibleNotice variant="error" clearQueryKeys={["error"]}>
+                {error}
+              </DismissibleNotice>
             ) : null}
           </CardContent>
         </Card>

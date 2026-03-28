@@ -8,6 +8,7 @@ import { MotionReveal } from "@/components/motion/reveal";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DismissibleNotice } from "@/components/ui/dismissible-notice";
 import { Input } from "@/components/ui/input";
 import {
   buildBrowserRedirectUrl,
@@ -146,14 +147,14 @@ export default function SignInPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {confirmed ? (
-              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <DismissibleNotice variant="success" clearQueryKeys={["confirmed"]}>
                 Email confirmed. You can sign in now.
-              </div>
+              </DismissibleNotice>
             ) : null}
             {resetStatus === "success" ? (
-              <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
+              <DismissibleNotice variant="success" clearQueryKeys={["reset"]}>
                 Password updated. Sign in with your new password.
-              </div>
+              </DismissibleNotice>
             ) : null}
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
@@ -221,8 +222,8 @@ export default function SignInPage() {
               </div>
             </form>
 
-            {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
+            {message ? <DismissibleNotice variant="success">{message}</DismissibleNotice> : null}
+            {error ? <DismissibleNotice variant="error">{error}</DismissibleNotice> : null}
           </CardContent>
         </Card>
       </MotionReveal>
