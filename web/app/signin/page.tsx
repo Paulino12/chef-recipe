@@ -18,6 +18,18 @@ import {
   syncServerAuthSession,
 } from "@/lib/supabase/browserClient";
 
+function getPostSignInStatus(nextPath: string) {
+  if (nextPath.startsWith("/owner")) {
+    return "Opening the owner area...";
+  }
+
+  if (nextPath.startsWith("/profile")) {
+    return "Opening your account...";
+  }
+
+  return "Opening your recipes...";
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,6 +38,7 @@ export default function SignInPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirectingMessage, setRedirectingMessage] = useState("");
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
 
@@ -38,6 +51,7 @@ export default function SignInPage() {
     event.preventDefault();
     setMessage("");
     setError("");
+    setRedirectingMessage("");
 
     if (!supabase || !isSupabaseBrowserConfigured()) {
       setError("Missing Supabase env config. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
@@ -45,6 +59,7 @@ export default function SignInPage() {
     }
 
     setLoading(true);
+    let shouldReleaseLoading = true;
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -62,13 +77,16 @@ export default function SignInPage() {
       }
 
       await syncServerAuthSession(data.session);
-      setMessage("Signed in successfully.");
       const requestedNext = searchParams.get("next")?.trim() ?? "";
-      const nextPath = requestedNext.startsWith("/") ? requestedNext : "/";
+      const nextPath = requestedNext.startsWith("/") ? requestedNext : "/recipes";
+      setRedirectingMessage(`Signed in successfully. ${getPostSignInStatus(nextPath)}`);
+      shouldReleaseLoading = false;
       router.push(nextPath);
       router.refresh();
     } finally {
-      setLoading(false);
+      if (shouldReleaseLoading) {
+        setLoading(false);
+      }
     }
   }
 
@@ -169,6 +187,7 @@ export default function SignInPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="you@example.com"
                   required
+                  disabled={loading}
                   autoComplete="email"
                 />
               </div>
@@ -185,6 +204,7 @@ export default function SignInPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="********"
                   required
+                  disabled={loading}
                   autoComplete="current-password"
                 />
               </div>
@@ -192,12 +212,16 @@ export default function SignInPage() {
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={loading} aria-busy={loading || undefined}>
                   {loading ? <ButtonSpinner /> : null}
-                  {loading ? "Signing in..." : "Sign in"}
+                  {redirectingMessage
+                    ? "Opening..."
+                    : loading
+                      ? "Signing in..."
+                      : "Sign in"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={recoveryLoading}
+                  disabled={loading || recoveryLoading}
                   aria-busy={recoveryLoading || undefined}
                   onClick={handleForgotPassword}
                 >
@@ -208,7 +232,7 @@ export default function SignInPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    disabled={resendLoading}
+                    disabled={loading || resendLoading}
                     aria-busy={resendLoading || undefined}
                     onClick={handleResendConfirmation}
                   >
@@ -222,7 +246,18 @@ export default function SignInPage() {
               </div>
             </form>
 
-            {message ? <DismissibleNotice variant="success">{message}</DismissibleNotice> : null}
+            {redirectingMessage ? (
+              <div className="flex items-start gap-3 rounded-lg border border-sky-300 bg-sky-50 p-3 text-sm text-sky-900">
+                <ButtonSpinner className="mt-0.5 h-4 w-4" />
+                <div className="space-y-1">
+                  <p className="font-medium">Sign-in complete</p>
+                  <p>{redirectingMessage}</p>
+                </div>
+              </div>
+            ) : null}
+            {!redirectingMessage && message ? (
+              <DismissibleNotice variant="success">{message}</DismissibleNotice>
+            ) : null}
             {error ? <DismissibleNotice variant="error">{error}</DismissibleNotice> : null}
           </CardContent>
         </Card>
