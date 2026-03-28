@@ -133,6 +133,57 @@ function normalizeCurrencyNumber(value: unknown) {
   return normalizeNumber(value, 2);
 }
 
+function normalizeCostingUnit(value: string | null | undefined) {
+  const normalizedUnit = normalizeText(value).toUpperCase();
+
+  switch (normalizedUnit) {
+    case "G":
+    case "GRAM":
+    case "GRAMS":
+      return "G";
+    case "KG":
+    case "KGS":
+    case "KILO":
+    case "KILOS":
+    case "KILOGRAM":
+    case "KILOGRAMS":
+      return "KG";
+    case "ML":
+    case "MLS":
+    case "MILLILITRE":
+    case "MILLILITRES":
+    case "MILLILITER":
+    case "MILLILITERS":
+      return "ML";
+    case "L":
+    case "LTR":
+    case "LTRS":
+    case "LT":
+    case "LITRE":
+    case "LITRES":
+    case "LITER":
+    case "LITERS":
+      return "L";
+    case "EA":
+    case "EACH":
+    case "UNIT":
+    case "UNITS":
+    case "ITEM":
+    case "ITEMS":
+    case "PC":
+    case "PCS":
+    case "PIECE":
+    case "PIECES":
+      return "EA";
+    case "PTN":
+    case "PORTION":
+    case "PORTIONS":
+      return "PTN";
+    default:
+      return normalizedUnit;
+  }
+}
+
 function normalizeIngredientSnapshot(ingredient: Partial<RecipeIngredient>) {
   return {
     text: normalizeText(ingredient.text),
@@ -280,7 +331,7 @@ export function calculateCatalogLineCost(
   const normalizedQty = normalizeNumber(qty, 4);
   if (normalizedQty === null) return null;
 
-  const normalizedUnit = normalizeText(unit).toUpperCase();
+  const normalizedUnit = normalizeCostingUnit(unit);
   let amount: number | null = null;
 
   switch (normalizedUnit) {

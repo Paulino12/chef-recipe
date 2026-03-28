@@ -38,7 +38,7 @@ type IngredientCatalogSuggestion = {
   score: number;
 };
 
-const MAX_CATALOG_SUGGESTIONS = 9;
+const MAX_CATALOG_SUGGESTIONS = 15;
 
 function parseMoneyInput(value: string) {
   const trimmed = value.trim();
