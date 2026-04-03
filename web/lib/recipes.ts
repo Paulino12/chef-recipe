@@ -55,6 +55,7 @@ export type Recipe = {
 export const PUBLIC_PAGE_SIZES = [10, 50, 100] as const;
 export type PublicPageSize = (typeof PUBLIC_PAGE_SIZES)[number];
 export type RecipeAudienceFilter = "public" | "enterprise" | "all";
+export type RecipeCostingFilter = "with" | "without";
 
 export type PublicRecipeCard = {
   id: string;
@@ -135,6 +136,16 @@ function visibilityPredicate(audience: RecipeAudienceFilter) {
   }
 }
 
+function costingPredicate() {
+  return `
+    (
+      !defined($costingFilter) ||
+      ($costingFilter == "with" && _id in $costedIds) ||
+      ($costingFilter == "without" && !(_id in $costedIds))
+    )
+  `;
+}
+
 function normalizePage(value: number | undefined) {
   const page = Number.isFinite(value) ? Math.floor(value ?? 1) : 1;
   return page > 0 ? page : 1;
@@ -168,6 +179,11 @@ function normalizeRecipeIds(values?: string[]) {
   if (!values?.length) return null;
   const ids = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
   return ids.length > 0 ? ids : null;
+}
+
+function normalizeCostingFilter(value?: RecipeCostingFilter | null) {
+  if (value === "with" || value === "without") return value;
+  return null;
 }
 
 function normalizeCategoryPathArray(value?: string[] | null) {
@@ -257,13 +273,21 @@ export async function listPublicRecipes(
 export async function countAccessibleRecipes(
   audience: RecipeAudienceFilter,
   query?: string,
-  options?: { category?: string; recipeIds?: string[]; collection?: RecipeCollection | null },
+  options?: {
+    category?: string;
+    recipeIds?: string[];
+    collection?: RecipeCollection | null;
+    costingFilter?: RecipeCostingFilter | null;
+    costedIds?: string[];
+  },
 ): Promise<number> {
   const q = query?.trim();
   const category = normalizeCategory(options?.category);
   const categoryPath = splitCategoryPath(category);
   const recipeIds = normalizeRecipeIds(options?.recipeIds);
   const collection = normalizeCollection(options?.collection);
+  const costingFilter = normalizeCostingFilter(options?.costingFilter);
+  const costedIds = normalizeRecipeIds(options?.costedIds) ?? [];
   const visibility = visibilityPredicate(audience);
   const qParam = q ? `*${q}*` : null;
   const countQuery = `
@@ -271,6 +295,7 @@ export async function countAccessibleRecipes(
       *[
         _type == "recipe" &&
         ${visibility} &&
+        ${costingPredicate()} &&
         (!defined($recipeIds) || _id in $recipeIds) &&
         (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
         (
@@ -297,6 +322,8 @@ export async function countAccessibleRecipes(
     categoryPath: categoryPath.length ? categoryPath : null,
     recipeIds,
     collection,
+    costingFilter,
+    costedIds,
   });
   return Number.isFinite(totalRaw) ? Math.max(0, Number(totalRaw)) : 0;
 }
@@ -313,6 +340,8 @@ export async function listAccessibleRecipes(
     category?: string;
     recipeIds?: string[];
     collection?: RecipeCollection | null;
+    costingFilter?: RecipeCostingFilter | null;
+    costedIds?: string[];
   },
 ): Promise<PublicRecipesResult> {
   const q = query?.trim();
@@ -320,6 +349,8 @@ export async function listAccessibleRecipes(
   const categoryPath = splitCategoryPath(category);
   const recipeIds = normalizeRecipeIds(options?.recipeIds);
   const collection = normalizeCollection(options?.collection);
+  const costingFilter = normalizeCostingFilter(options?.costingFilter);
+  const costedIds = normalizeRecipeIds(options?.costedIds) ?? [];
   const page = normalizePage(options?.page);
   const pageSize = normalizePageSize(options?.pageSize);
   const params = {
@@ -327,6 +358,8 @@ export async function listAccessibleRecipes(
     categoryPath: categoryPath.length ? categoryPath : null,
     recipeIds,
     collection,
+    costingFilter,
+    costedIds,
   };
   const visibility = visibilityPredicate(audience);
   const countQuery = `
@@ -334,6 +367,7 @@ export async function listAccessibleRecipes(
       *[
         _type == "recipe" &&
         ${visibility} &&
+        ${costingPredicate()} &&
         (!defined($recipeIds) || _id in $recipeIds) &&
         (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
         (
@@ -359,6 +393,7 @@ export async function listAccessibleRecipes(
     *[
       _type == "recipe" &&
       ${visibility} &&
+      ${costingPredicate()} &&
       (!defined($recipeIds) || _id in $recipeIds) &&
       (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
       (
@@ -469,14 +504,22 @@ export async function getAccessibleRecipeById(id: string, audience: RecipeAudien
  */
 export async function listAccessibleCategories(
   audience: RecipeAudienceFilter,
-  options?: { recipeIds?: string[]; collection?: RecipeCollection | null },
+  options?: {
+    recipeIds?: string[];
+    collection?: RecipeCollection | null;
+    costingFilter?: RecipeCostingFilter | null;
+    costedIds?: string[];
+  },
 ) {
   const recipeIds = normalizeRecipeIds(options?.recipeIds);
   const collection = normalizeCollection(options?.collection);
+  const costingFilter = normalizeCostingFilter(options?.costingFilter);
+  const costedIds = normalizeRecipeIds(options?.costedIds) ?? [];
   const query = `
     *[
       _type == "recipe" &&
       ${visibilityPredicate(audience)} &&
+      ${costingPredicate()} &&
       (!defined($recipeIds) || _id in $recipeIds) &&
       (!defined($collection) || coalesce(collection, "Dining") == $collection) &&
       defined(categoryPath[0]) &&
@@ -485,7 +528,12 @@ export async function listAccessibleCategories(
       categoryPath
     }
   `;
-  const rows = await sanity.fetch<Array<{ categoryPath?: string[] }>>(query, { recipeIds, collection });
+  const rows = await sanity.fetch<Array<{ categoryPath?: string[] }>>(query, {
+    recipeIds,
+    collection,
+    costingFilter,
+    costedIds,
+  });
   const counts = new Map<string, RecipeCategoryOption>();
   for (const row of rows) {
     const parts = Array.isArray(row.categoryPath)

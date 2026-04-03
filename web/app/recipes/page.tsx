@@ -10,7 +10,7 @@ import { ClearableInput } from "@/components/ui/clearable-input";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { getFavoriteIdsFromCookieStore } from "@/lib/api/favoriteCookie";
 import { listRecipeFavoriteIds } from "@/lib/api/favorites";
-import { listRecipeCostingSummariesByIds } from "@/lib/api/recipeCostings";
+import { listCostedRecipeIds, listRecipeCostingSummariesByIds } from "@/lib/api/recipeCostings";
 import { buildCompactPagination } from "@/lib/pagination";
 import { formatRecipeCostMoney } from "@/lib/recipeCosting";
 import { getServerAccessSession } from "@/lib/api/serverSession";
@@ -18,6 +18,7 @@ import {
   buildHrefWithQuery,
   parseCategoryFilter,
   parseCollectionFilter,
+  parseCostingFilter,
   parsePageNumber,
   parsePageSizeNumber,
   pickFirstQueryParam,
@@ -28,6 +29,7 @@ import {
   listAccessibleCategories,
   listAccessibleRecipes,
   RecipeAudienceFilter,
+  type RecipeCostingFilter,
 } from "@/lib/recipes";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +43,7 @@ type RecipesSearchParams = {
   category?: string | string[];
   collection?: string | string[];
   favorites?: string | string[];
+  costing?: string | string[];
 };
 
 function parseAudience(value?: string): RecipeAudienceFilter | null {
@@ -76,6 +79,7 @@ function buildRecipesHref(params: {
   category: string;
   collection: string;
   favoritesOnly: boolean;
+  costing: string;
 }) {
   return buildHrefWithQuery("/recipes", {
     q: params.q,
@@ -83,6 +87,7 @@ function buildRecipesHref(params: {
     category: params.category,
     audience: params.audience,
     favorites: params.favoritesOnly ? "1" : undefined,
+    costing: params.costing,
     page: params.page,
     pageSize: params.pageSize,
   });
@@ -103,6 +108,13 @@ function formatNumber(value: number | null) {
   return Number.isInteger(rounded) ? String(rounded) : String(rounded);
 }
 
+function summarizeContainedAllergens(labels: string[]) {
+  if (!labels.length) return "No listed allergens";
+  const preview = labels.slice(0, 2).join(", ");
+  const remainder = labels.length - 2;
+  return remainder > 0 ? `Contains ${preview} +${remainder}` : `Contains ${preview}`;
+}
+
 export default async function RecipesPage({
   searchParams,
 }: {
@@ -118,6 +130,8 @@ export default async function RecipesPage({
   const selectedCategory = parseCategoryFilter(pickFirstQueryParam(sp.category));
   const selectedCollection = parseCollectionFilter(pickFirstQueryParam(sp.collection));
   const favoritesOnly = parseFavorites(pickFirstQueryParam(sp.favorites));
+  const selectedCostingFilter = parseCostingFilter(pickFirstQueryParam(sp.costing));
+  const costingFilter: RecipeCostingFilter | null = selectedCostingFilter || null;
   const requestedPage = parsePageNumber(pickFirstQueryParam(sp.page));
   const requestedPageSize = parsePageSizeNumber(pickFirstQueryParam(sp.pageSize));
 
@@ -136,6 +150,14 @@ export default async function RecipesPage({
       ? favoriteRecipeIds
       : ["__no_favorites__"]
     : undefined;
+  let costedIds: string[] = [];
+  if (selectedCostingFilter) {
+    try {
+      costedIds = await listCostedRecipeIds();
+    } catch {
+      costedIds = [];
+    }
+  }
 
   if (!audience) {
     return (
@@ -163,11 +185,15 @@ export default async function RecipesPage({
     category: selectedCategory,
     collection: selectedCollection || null,
     recipeIds: favoriteFilterIds,
+    costingFilter,
+    costedIds,
   });
 
   const categories = await listAccessibleCategories(audience, {
     collection: selectedCollection || null,
     recipeIds: favoriteFilterIds,
+    costingFilter,
+    costedIds,
   });
   const activeCategory =
     selectedCategory && categories.some((category) => category.value === selectedCategory)
@@ -180,6 +206,8 @@ export default async function RecipesPage({
           category: activeCategory,
           collection: selectedCollection || null,
           recipeIds: favoriteFilterIds,
+          costingFilter,
+          costedIds,
         })
       : Promise.resolve(0),
     canViewEnterprise
@@ -187,6 +215,8 @@ export default async function RecipesPage({
           category: activeCategory,
           collection: selectedCollection || null,
           recipeIds: favoriteFilterIds,
+          costingFilter,
+          costedIds,
         })
       : Promise.resolve(0),
     canViewPublic && canViewEnterprise
@@ -194,20 +224,28 @@ export default async function RecipesPage({
           category: activeCategory,
           collection: selectedCollection || null,
           recipeIds: favoriteFilterIds,
+          costingFilter,
+          costedIds,
         })
       : Promise.resolve(0),
   ]);
   const [umbrellaTotalCount, diningCount, hospitalityCount] = await Promise.all([
     countAccessibleRecipes(audience, q, {
       recipeIds: favoriteFilterIds,
+      costingFilter,
+      costedIds,
     }),
     countAccessibleRecipes(audience, q, {
       collection: "Dining",
       recipeIds: favoriteFilterIds,
+      costingFilter,
+      costedIds,
     }),
     countAccessibleRecipes(audience, q, {
       collection: "Hospitality",
       recipeIds: favoriteFilterIds,
+      costingFilter,
+      costedIds,
     }),
   ]);
   const favoritesCount = favoriteRecipeIds.length
@@ -215,6 +253,8 @@ export default async function RecipesPage({
         category: activeCategory,
         collection: selectedCollection || null,
         recipeIds: favoriteRecipeIds,
+        costingFilter,
+        costedIds,
       })
     : 0;
 
@@ -235,12 +275,13 @@ export default async function RecipesPage({
     category: activeCategory,
     audience,
     favoritesOnly,
+    costing: selectedCostingFilter,
     page: data.page,
     pageSize: data.pageSize,
   });
   const listAnimationKey = `${audience}|${selectedCollection || "all"}|${activeCategory}|${q}|${
     favoritesOnly ? "fav" : "all"
-  }|${data.page}|${data.pageSize}`;
+  }|${selectedCostingFilter || "costing-all"}|${data.page}|${data.pageSize}`;
   const favoriteIds = allFavoriteIds;
   const pageTokens = buildCompactPagination(data.totalPages, data.page);
 
@@ -267,6 +308,7 @@ export default async function RecipesPage({
                     category: "",
                     audience,
                     favoritesOnly,
+                    costing: selectedCostingFilter,
                     page: 1,
                     pageSize: data.pageSize,
                   })}
@@ -289,6 +331,7 @@ export default async function RecipesPage({
                         category: "",
                         audience,
                         favoritesOnly,
+                        costing: selectedCostingFilter,
                         page: 1,
                         pageSize: data.pageSize,
                       })}
@@ -312,6 +355,7 @@ export default async function RecipesPage({
                       category: activeCategory,
                       audience: "all",
                       favoritesOnly,
+                      costing: selectedCostingFilter,
                       page: 1,
                       pageSize: data.pageSize,
                     })}
@@ -329,6 +373,7 @@ export default async function RecipesPage({
                       category: activeCategory,
                       audience: "public",
                       favoritesOnly,
+                      costing: selectedCostingFilter,
                       page: 1,
                       pageSize: data.pageSize,
                     })}
@@ -349,6 +394,7 @@ export default async function RecipesPage({
                       category: activeCategory,
                       audience: "enterprise",
                       favoritesOnly,
+                      costing: selectedCostingFilter,
                       page: 1,
                       pageSize: data.pageSize,
                     })}
@@ -368,6 +414,7 @@ export default async function RecipesPage({
                     category: activeCategory,
                     audience,
                     favoritesOnly: !favoritesOnly,
+                    costing: selectedCostingFilter,
                     page: 1,
                     pageSize: data.pageSize,
                   })}
@@ -385,7 +432,7 @@ export default async function RecipesPage({
                 <input type="hidden" name="audience" value={audience} />
                 {selectedCollection ? <input type="hidden" name="collection" value={selectedCollection} /> : null}
                 {favoritesOnly ? <input type="hidden" name="favorites" value="1" /> : null}
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] sm:items-end">
                   <div>
                     <label className="mb-2 block text-sm font-medium" htmlFor="q">
                       Search by title
@@ -414,6 +461,21 @@ export default async function RecipesPage({
                           {category.name} ({category.count})
                         </option>
                       ))}
+                    </select>
+                  </div>
+                  <div className="sm:w-40">
+                    <label className="mb-2 block text-sm font-medium" htmlFor="costing">
+                      Costing
+                    </label>
+                    <select
+                      id="costing"
+                      name="costing"
+                      defaultValue={selectedCostingFilter}
+                      className="h-11 w-full rounded-md border border-input bg-background/80 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">All</option>
+                      <option value="with">With costing</option>
+                      <option value="without">Without costing</option>
                     </select>
                   </div>
                   <div className="sm:w-28">
@@ -468,6 +530,7 @@ export default async function RecipesPage({
             const energyKcal = readNumeric(per100g, ["energyKcal", "energy_kcal", "kcal", "kCal"]);
             const isFavorite = favoriteIds.has(recipe.id);
             const containedAllergens = listContainedAllergenLabels(recipe.allergens);
+            const allergenSummary = summarizeContainedAllergens(containedAllergens);
             const recipeCostingSummary = recipeCostingSummaries[recipe.id];
             const costingLabel = recipeCostingSummary
               ? recipeCostingSummary.costPerPortion !== null
@@ -477,11 +540,20 @@ export default async function RecipesPage({
                   )}/portion`
                 : "Costed"
               : "";
+            const costPerPortionLabel =
+              recipeCostingSummary?.costPerPortion !== null &&
+              recipeCostingSummary?.costPerPortion !== undefined
+                ? formatRecipeCostMoney(
+                    recipeCostingSummary.costPerPortion,
+                    recipeCostingSummary.currency,
+                  )
+                : null;
+            const categoryLabel = recipe.categoryPath?.[0] ?? "Uncategorised";
 
             return (
               <MotionStaggerItem key={recipe.id}>
-                <Card className="group relative h-full overflow-hidden border-border/70 transition duration-200 hover:-translate-y-1 hover:shadow-lg">
-                  <form action={setRecipeFavoriteAction} className="absolute right-6 top-6 z-10">
+                <Card className="group relative h-full overflow-hidden border-border/70 bg-gradient-to-br from-background via-background to-muted/20 transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+                  <form action={setRecipeFavoriteAction} className="absolute right-4 top-4 z-20 sm:right-5 sm:top-5">
                     <input type="hidden" name="recipeId" value={recipe.id} />
                     <input type="hidden" name="value" value={String(!isFavorite)} />
                     <FavoriteToggleButton
@@ -489,26 +561,56 @@ export default async function RecipesPage({
                       label={isFavorite ? "Remove from favorites" : "Save as favorite"}
                       pendingLabel={isFavorite ? "Removing favourite" : "Saving favourite"}
                       className={cn(
-                        "h-10 w-10 overflow-visible p-0",
+                        "h-9 w-9 overflow-visible rounded-full bg-background/90 p-0 shadow-sm backdrop-blur sm:h-10 sm:w-10",
                         isFavorite ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-foreground",
                       )}
                     />
                   </form>
 
-                  <CardHeader className="pr-20">
-                    <div className="flex items-start gap-3">
-                      <div className="w-28 flex-none overflow-hidden rounded-md border border-border/60 bg-muted/20 sm:w-32">
-                      {/* Each recipe has a stable fallback placeholder until a real image is provided. */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={(recipe.imageUrl ?? "/recipe-placeholder.svg").trim() || "/recipe-placeholder.svg"}
-                        alt={recipe.title}
-                        loading="lazy"
-                        className="h-24 w-full object-cover sm:h-28"
-                      />
+                  <CardContent className="flex h-full flex-col p-4 sm:p-5">
+                    <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 sm:grid-cols-[120px_minmax(0,1fr)] sm:gap-4">
+                      <div className="relative overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+                        {/* Each recipe has a stable fallback placeholder until a real image is provided. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={(recipe.imageUrl ?? "/recipe-placeholder.svg").trim() || "/recipe-placeholder.svg"}
+                          alt={recipe.title}
+                          loading="lazy"
+                          className="h-24 w-full object-cover sm:h-32"
+                        />
+                        {costPerPortionLabel ? (
+                          <div className="absolute inset-x-2 bottom-2 rounded-lg border border-emerald-200/90 bg-emerald-50/95 px-2.5 py-1.5 shadow-sm backdrop-blur">
+                            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-700">
+                              Cost / Portion
+                            </p>
+                            <p className="mt-0.5 text-sm font-semibold text-emerald-950">
+                              {costPerPortionLabel}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
-                      <div>
-                        <CardTitle className="text-lg leading-tight">
+                      <div className="min-w-0 space-y-3 pr-10">
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="bg-background/80">
+                            {recipe.collection}
+                          </Badge>
+                          <Badge variant="secondary" className="bg-muted/70 text-foreground">
+                            {categoryLabel}
+                          </Badge>
+                          {recipeCostingSummary && !costPerPortionLabel ? (
+                            <Badge variant="outline" className="border-dashed">
+                              Saved costing
+                            </Badge>
+                          ) : null}
+                          {!recipeCostingSummary ? (
+                            <Badge variant="outline" className="border-dashed text-muted-foreground">
+                              No costing yet
+                            </Badge>
+                          ) : null}
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <CardTitle className="text-base leading-tight sm:text-lg">
                           <Link
                             href={`/recipes/${recipe.id}?audience=${encodeURIComponent(audience)}${
                               favoritesOnly ? "&favorites=1" : ""
@@ -518,42 +620,50 @@ export default async function RecipesPage({
                             {recipe.title}
                           </Link>
                         </CardTitle>
-                        <CardDescription className="mt-1">
-                          {`${recipe.collection} | ${recipe.categoryPath?.[0] ?? "Uncategorised"} | RN ${recipe.pluNumber}${
-                            costingLabel ? ` | ${costingLabel}` : ""
-                          }`}
+                        <CardDescription className="text-sm">
+                          RN {recipe.pluNumber}
+                          {costingLabel && !costPerPortionLabel ? ` | ${costingLabel}` : ""}
                         </CardDescription>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Allergens:{" "}
-                          {containedAllergens.length > 0
+                        <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                          {allergenSummary}{/*
                             ? containedAllergens.map((name) => `✓ ${name}`).join(", ")
-                            : "None listed"}
+                            */}
+                        </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      {isOwner ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={recipe.visibility?.public ? "success" : "outline"}>
+                            Public {recipe.visibility?.public ? "ON" : "OFF"}
+                          </Badge>
+                          <Badge variant={recipe.visibility?.enterprise ? "secondary" : "outline"}>
+                            Enterprise {recipe.visibility?.enterprise ? "ON" : "OFF"}
+                          </Badge>
+                        </div>
+                      ) : null}
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-border/70 bg-background/65 p-3">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                          Portions
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {recipe.portions ?? "-"}
                         </p>
                       </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="mt-auto space-y-2 pt-0">
-                    {isOwner ? (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant={recipe.visibility?.public ? "success" : "outline"}>
-                          Public {recipe.visibility?.public ? "ON" : "OFF"}
-                        </Badge>
-                        <Badge variant={recipe.visibility?.enterprise ? "secondary" : "outline"}>
-                          Enterprise {recipe.visibility?.enterprise ? "ON" : "OFF"}
-                        </Badge>
+                      <div className="rounded-xl border border-border/70 bg-background/65 p-3">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                          Energy / 100g
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {formatNumber(energyKcal)} kcal
+                        </p>
+                        <p className="text-xs text-muted-foreground">{formatNumber(energyKj)} kJ</p>
                       </div>
-                    ) : null}
-
-                    <div className="rounded-md border border-border/70 bg-background/60 p-2 text-xs text-muted-foreground">
-                      <p>
-                        <span className="font-medium text-foreground">Portions:</span> {recipe.portions ?? "-"}
-                      </p>
-                      <p>
-                        <span className="font-medium text-foreground">Per 100g energy:</span>{" "}
-                        {formatNumber(energyKj)} kJ / {formatNumber(energyKcal)} kcal
-                      </p>
                     </div>
+                  </div>
                   </CardContent>
                 </Card>
               </MotionStaggerItem>
@@ -579,6 +689,7 @@ export default async function RecipesPage({
                 category: activeCategory,
                 audience,
                 favoritesOnly,
+                costing: selectedCostingFilter,
                 page: data.page - 1,
                 pageSize: data.pageSize,
               })}
@@ -617,6 +728,7 @@ export default async function RecipesPage({
                     category: activeCategory,
                     audience,
                     favoritesOnly,
+                    costing: selectedCostingFilter,
                     page: token,
                     pageSize: data.pageSize,
                   })}
@@ -636,6 +748,7 @@ export default async function RecipesPage({
                 category: activeCategory,
                 audience,
                 favoritesOnly,
+                costing: selectedCostingFilter,
                 page: data.page + 1,
                 pageSize: data.pageSize,
               })}
