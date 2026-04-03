@@ -630,7 +630,6 @@ export default async function RecipesPage({
                           {costingLabel && !costPerPortionLabel ? ` | ${costingLabel}` : ""}
                         </CardDescription>
                         <div
-                          title={allergenDetails}
                           className="group/allergens relative rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs text-muted-foreground"
                         >
                           <span className="block">{allergenSummary}</span>{/*
