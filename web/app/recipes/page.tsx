@@ -553,6 +553,11 @@ export default async function RecipesPage({
                     recipeCostingSummary.currency,
                   )
                 : null;
+            const costStatusLabel = costPerPortionLabel
+              ? "Cost / Portion"
+              : recipeCostingSummary
+                ? "Saved costing"
+                : "";
             const categoryLabel = recipe.categoryPath?.[0] ?? "Uncategorised";
 
             return (
@@ -572,7 +577,7 @@ export default async function RecipesPage({
                     />
                   </form>
 
-                  <CardContent className="flex h-full flex-col p-4 sm:p-5">
+                  <CardContent className="flex h-full flex-col px-5 pb-5 pt-5">
                     <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3 sm:grid-cols-[120px_minmax(0,1fr)] sm:gap-4">
                       <div className="relative overflow-hidden rounded-xl border border-border/60 bg-muted/20">
                         {/* Each recipe has a stable fallback placeholder until a real image is provided. */}
@@ -583,14 +588,32 @@ export default async function RecipesPage({
                           loading="lazy"
                           className="h-24 w-full object-cover sm:h-32"
                         />
-                        {costPerPortionLabel ? (
-                          <div className="absolute inset-x-2 bottom-2 rounded-lg border border-emerald-200/90 bg-emerald-50/95 px-2.5 py-1.5 shadow-sm backdrop-blur">
-                            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-emerald-700">
-                              Cost / Portion
+                        {recipeCostingSummary ? (
+                          <div
+                            className={cn(
+                              "absolute inset-x-2 bottom-2 rounded-lg px-2.5 py-1.5 shadow-sm backdrop-blur",
+                              costPerPortionLabel
+                                ? "border border-emerald-200/90 bg-emerald-50/95"
+                                : "border border-border/80 bg-background/92",
+                            )}
+                          >
+                            <p
+                              className={cn(
+                                "text-[10px] font-medium uppercase tracking-[0.18em]",
+                                costPerPortionLabel ? "text-emerald-700" : "text-muted-foreground",
+                              )}
+                            >
+                              {costStatusLabel}
                             </p>
-                            <p className="mt-0.5 text-sm font-semibold text-emerald-950">
-                              {costPerPortionLabel}
-                            </p>
+                            {costPerPortionLabel ? (
+                              <p className="mt-0.5 text-sm font-semibold text-emerald-950">
+                                {costPerPortionLabel}
+                              </p>
+                            ) : (
+                              <p className="mt-0.5 text-xs font-medium text-foreground">
+                                Cost saved, no portion value yet
+                              </p>
+                            )}
                           </div>
                         ) : null}
                       </div>
@@ -602,16 +625,6 @@ export default async function RecipesPage({
                           <Badge variant="secondary" className="bg-muted/70 text-foreground">
                             {categoryLabel}
                           </Badge>
-                          {recipeCostingSummary && !costPerPortionLabel ? (
-                            <Badge variant="outline" className="border-dashed">
-                              Saved costing
-                            </Badge>
-                          ) : null}
-                          {!recipeCostingSummary ? (
-                            <Badge variant="outline" className="border-dashed text-muted-foreground">
-                              No costing yet
-                            </Badge>
-                          ) : null}
                         </div>
 
                         <div className="space-y-1.5">
