@@ -115,6 +115,10 @@ function summarizeContainedAllergens(labels: string[]) {
   return remainder > 0 ? `Contains ${preview} +${remainder}` : `Contains ${preview}`;
 }
 
+function listContainedAllergensText(labels: string[]) {
+  return labels.length ? labels.join(", ") : "No listed allergens";
+}
+
 export default async function RecipesPage({
   searchParams,
 }: {
@@ -531,6 +535,7 @@ export default async function RecipesPage({
             const isFavorite = favoriteIds.has(recipe.id);
             const containedAllergens = listContainedAllergenLabels(recipe.allergens);
             const allergenSummary = summarizeContainedAllergens(containedAllergens);
+            const allergenDetails = listContainedAllergensText(containedAllergens);
             const recipeCostingSummary = recipeCostingSummaries[recipe.id];
             const costingLabel = recipeCostingSummary
               ? recipeCostingSummary.costPerPortion !== null
@@ -624,10 +629,20 @@ export default async function RecipesPage({
                           RN {recipe.pluNumber}
                           {costingLabel && !costPerPortionLabel ? ` | ${costingLabel}` : ""}
                         </CardDescription>
-                        <div className="rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-                          {allergenSummary}{/*
+                        <div
+                          title={allergenDetails}
+                          className="group/allergens relative rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <span className="block">{allergenSummary}</span>{/*
                             ? containedAllergens.map((name) => `✓ ${name}`).join(", ")
-                            */}
+                            */}{containedAllergens.length > 0 ? (
+                            <div className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-56 rounded-lg border border-border/80 bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground shadow-xl group-hover/allergens:block">
+                              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                                All Allergens
+                              </p>
+                              <p className="mt-1">{allergenDetails}</p>
+                            </div>
+                          ) : null}
                         </div>
                         </div>
                       </div>
