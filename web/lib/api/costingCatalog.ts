@@ -15,9 +15,11 @@ type RawCatalogEntry = {
   description?: unknown;
   pack_size?: unknown;
   price?: unknown;
+  price_per_item?: unknown;
   manufacturer?: unknown;
   pricing_unit?: unknown;
   estimated_unit_price?: unknown;
+  weighted_item?: unknown;
 };
 
 function normalizeText(value: unknown) {
@@ -29,6 +31,39 @@ function normalizeNumber(value: unknown, fractionDigits = 6) {
   if (!Number.isFinite(raw)) return null;
   const factor = 10 ** fractionDigits;
   return Math.round(raw * factor) / factor;
+}
+
+function normalizePricingUnit(value: unknown) {
+  return normalizeText(value).toUpperCase();
+}
+
+function isSingleEachPack(packSize: string) {
+  const normalized = packSize.toUpperCase().replace(/\s+/g, " ").trim();
+  return /^(?:1 X )?(?:1 X )?EACH$/.test(normalized);
+}
+
+function resolveEstimatedUnitPrice(raw: RawCatalogEntry) {
+  const directEstimate = normalizeNumber(raw.estimated_unit_price, 8);
+  if (directEstimate !== null) return directEstimate;
+
+  const pricePerItem = normalizeNumber(raw.price_per_item, 8);
+  if (pricePerItem !== null) return pricePerItem;
+
+  const pricingUnit = normalizePricingUnit(raw.pricing_unit);
+  const packSize = normalizeText(raw.pack_size);
+  const packPrice = normalizeNumber(raw.price, 8);
+  const isWeightedItem = raw.weighted_item === true;
+
+  if (
+    pricingUnit === "EA" &&
+    !isWeightedItem &&
+    packPrice !== null &&
+    isSingleEachPack(packSize)
+  ) {
+    return packPrice;
+  }
+
+  return null;
 }
 
 function normalizeEntry(value: unknown): IngredientCatalogEntry | null {
@@ -59,12 +94,12 @@ function normalizeEntry(value: unknown): IngredientCatalogEntry | null {
     confidence: 1,
     isSubRecipe: false,
     matchedCatalogCode: normalizeText(raw.code),
-    matchedCatalogDescription: description,
-    matchedSupplier: supplier,
-    matchedPackSize: normalizeText(raw.pack_size),
-    matchedPackPrice: normalizeNumber(raw.price, 2),
-    estimatedUnitPrice: normalizeNumber(raw.estimated_unit_price, 8),
-    candidateMatches: [],
+      matchedCatalogDescription: description,
+      matchedSupplier: supplier,
+      matchedPackSize: normalizeText(raw.pack_size),
+      matchedPackPrice: normalizeNumber(raw.price, 2),
+      estimatedUnitPrice: resolveEstimatedUnitPrice(raw),
+      candidateMatches: [],
   };
 }
 

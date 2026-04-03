@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { calculateCatalogLineCost } from "@/lib/recipeCosting";
 
 describe("calculateCatalogLineCost unit normalization", () => {
+  it("prices explicit EA units", () => {
+    expect(calculateCatalogLineCost(60, "EA", 1.79)).toBe(107.4);
+  });
+
   it("prices each-based aliases like 'each'", () => {
     expect(calculateCatalogLineCost(12, "each", 0.35)).toBe(4.2);
   });

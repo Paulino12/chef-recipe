@@ -366,7 +366,8 @@ export function RecipeCostingEditor({
                                           nextQty,
                                           subRecipe.costPerPortion,
                                         )
-                                      : entry.estimatedUnitPrice
+                                      : entry.estimatedUnitPrice !== null &&
+                                          entry.estimatedUnitPrice !== undefined
                                         ? calculateCatalogLineCost(
                                             nextQty,
                                             entry.unit,
