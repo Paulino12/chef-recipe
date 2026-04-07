@@ -3,14 +3,27 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { Badge } from "@/components/ui/badge";
-import { MotionReveal, MotionStaggerItem, MotionStaggerList } from "@/components/motion/reveal";
+import {
+  MotionReveal,
+  MotionStaggerItem,
+  MotionStaggerList,
+} from "@/components/motion/reveal";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ClearableInput } from "@/components/ui/clearable-input";
 import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { getFavoriteIdsFromCookieStore } from "@/lib/api/favoriteCookie";
 import { listRecipeFavoriteIds } from "@/lib/api/favorites";
-import { listCostedRecipeIds, listRecipeCostingSummariesByIds } from "@/lib/api/recipeCostings";
+import {
+  listCostedRecipeIds,
+  listRecipeCostingSummariesByIds,
+} from "@/lib/api/recipeCostings";
 import { buildCompactPagination } from "@/lib/pagination";
 import { formatRecipeCostMoney } from "@/lib/recipeCosting";
 import { getServerAccessSession } from "@/lib/api/serverSession";
@@ -47,7 +60,8 @@ type RecipesSearchParams = {
 };
 
 function parseAudience(value?: string): RecipeAudienceFilter | null {
-  if (value === "public" || value === "enterprise" || value === "all") return value;
+  if (value === "public" || value === "enterprise" || value === "all")
+    return value;
   return null;
 }
 
@@ -112,11 +126,32 @@ function summarizeContainedAllergens(labels: string[]) {
   if (!labels.length) return "No listed allergens";
   const preview = labels.slice(0, 2).join(", ");
   const remainder = labels.length - 2;
-  return remainder > 0 ? `Contains ${preview} +${remainder}` : `Contains ${preview}`;
+  return remainder > 0
+    ? `Contains ${preview} +${remainder}`
+    : `Contains ${preview}`;
 }
 
 function listContainedAllergensText(labels: string[]) {
   return labels.length ? labels.join(", ") : "No listed allergens";
+}
+
+function formatPortionSummary(
+  portions: number | null,
+  portionNetWeightG: number | null | undefined,
+) {
+  const portionsLabel = portions === null ? "-" : formatNumber(portions);
+  const weightLabel =
+    portionNetWeightG === null ||
+    portionNetWeightG === undefined ||
+    portionNetWeightG <= 0
+      ? ""
+      : `${formatNumber(portionNetWeightG)}g`;
+
+  if (portionsLabel !== "-" && weightLabel) {
+    return `${portionsLabel} portions • ${weightLabel} each`;
+  }
+
+  return portionsLabel;
 }
 
 export default async function RecipesPage({
@@ -131,17 +166,30 @@ export default async function RecipesPage({
   const q = (pickFirstQueryParam(sp.q) ?? "").trim();
   const isOwner = session.user.role === "owner";
   const requestedAudience = parseAudience(pickFirstQueryParam(sp.audience));
-  const selectedCategory = parseCategoryFilter(pickFirstQueryParam(sp.category));
-  const selectedCollection = parseCollectionFilter(pickFirstQueryParam(sp.collection));
+  const selectedCategory = parseCategoryFilter(
+    pickFirstQueryParam(sp.category),
+  );
+  const selectedCollection = parseCollectionFilter(
+    pickFirstQueryParam(sp.collection),
+  );
   const favoritesOnly = parseFavorites(pickFirstQueryParam(sp.favorites));
-  const selectedCostingFilter = parseCostingFilter(pickFirstQueryParam(sp.costing));
-  const costingFilter: RecipeCostingFilter | null = selectedCostingFilter || null;
+  const selectedCostingFilter = parseCostingFilter(
+    pickFirstQueryParam(sp.costing),
+  );
+  const costingFilter: RecipeCostingFilter | null =
+    selectedCostingFilter || null;
   const requestedPage = parsePageNumber(pickFirstQueryParam(sp.page));
-  const requestedPageSize = parsePageSizeNumber(pickFirstQueryParam(sp.pageSize));
+  const requestedPageSize = parsePageSizeNumber(
+    pickFirstQueryParam(sp.pageSize),
+  );
 
   const canViewPublic = session.entitlements.can_view_public;
   const canViewEnterprise = session.entitlements.can_view_enterprise;
-  const audience = getAllowedAudience(requestedAudience, canViewPublic, canViewEnterprise);
+  const audience = getAllowedAudience(
+    requestedAudience,
+    canViewPublic,
+    canViewEnterprise,
+  );
   const cookieStore = await cookies();
   const cookieFavoriteIds = getFavoriteIdsFromCookieStore(cookieStore);
   const allFavoriteIds = new Set([
@@ -170,11 +218,15 @@ export default async function RecipesPage({
           <CardHeader>
             <CardTitle className="text-3xl">Access required</CardTitle>
             <CardDescription>
-              Your account does not currently have recipe access. Open your profile or contact the owner to enable enterprise access.
+              Your account does not currently have recipe access. Open your
+              profile or contact the owner to enable enterprise access.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Link href="/profile" className={buttonVariants({ variant: "default" })}>
+            <Link
+              href="/profile"
+              className={buttonVariants({ variant: "default" })}
+            >
               Open profile
             </Link>
           </CardContent>
@@ -200,7 +252,8 @@ export default async function RecipesPage({
     costedIds,
   });
   const activeCategory =
-    selectedCategory && categories.some((category) => category.value === selectedCategory)
+    selectedCategory &&
+    categories.some((category) => category.value === selectedCategory)
       ? selectedCategory
       : "";
 
@@ -233,25 +286,27 @@ export default async function RecipesPage({
         })
       : Promise.resolve(0),
   ]);
-  const [umbrellaTotalCount, diningCount, hospitalityCount] = await Promise.all([
-    countAccessibleRecipes(audience, q, {
-      recipeIds: favoriteFilterIds,
-      costingFilter,
-      costedIds,
-    }),
-    countAccessibleRecipes(audience, q, {
-      collection: "Dining",
-      recipeIds: favoriteFilterIds,
-      costingFilter,
-      costedIds,
-    }),
-    countAccessibleRecipes(audience, q, {
-      collection: "Hospitality",
-      recipeIds: favoriteFilterIds,
-      costingFilter,
-      costedIds,
-    }),
-  ]);
+  const [umbrellaTotalCount, diningCount, hospitalityCount] = await Promise.all(
+    [
+      countAccessibleRecipes(audience, q, {
+        recipeIds: favoriteFilterIds,
+        costingFilter,
+        costedIds,
+      }),
+      countAccessibleRecipes(audience, q, {
+        collection: "Dining",
+        recipeIds: favoriteFilterIds,
+        costingFilter,
+        costedIds,
+      }),
+      countAccessibleRecipes(audience, q, {
+        collection: "Hospitality",
+        recipeIds: favoriteFilterIds,
+        costingFilter,
+        costedIds,
+      }),
+    ],
+  );
   const favoritesCount = favoriteRecipeIds.length
     ? await countAccessibleRecipes(audience, q, {
         category: activeCategory,
@@ -296,7 +351,9 @@ export default async function RecipesPage({
           <Card className="surface-panel border-white/40 shadow-xl shadow-black/5">
             <CardHeader className="space-y-5">
               <div className="space-y-2">
-                <CardTitle className="text-3xl sm:text-4xl">All Recipes</CardTitle>
+                <CardTitle className="text-3xl sm:text-4xl">
+                  All Recipes
+                </CardTitle>
                 <CardDescription className="max-w-xl text-sm sm:text-base">
                   {isOwner
                     ? "Browse recipes and visibility scope. Owners see visibility labels on each recipe."
@@ -325,7 +382,8 @@ export default async function RecipesPage({
                 </Link>
 
                 {(["Dining", "Hospitality"] as const).map((collection) => {
-                  const count = collection === "Dining" ? diningCount : hospitalityCount;
+                  const count =
+                    collection === "Dining" ? diningCount : hospitalityCount;
                   return (
                     <Link
                       key={collection}
@@ -340,7 +398,10 @@ export default async function RecipesPage({
                         pageSize: data.pageSize,
                       })}
                       className={buttonVariants({
-                        variant: selectedCollection === collection ? "secondary" : "outline",
+                        variant:
+                          selectedCollection === collection
+                            ? "secondary"
+                            : "outline",
                         size: "sm",
                       })}
                     >
@@ -363,7 +424,10 @@ export default async function RecipesPage({
                       page: 1,
                       pageSize: data.pageSize,
                     })}
-                    className={buttonVariants({ variant: audience === "all" ? "secondary" : "outline", size: "sm" })}
+                    className={buttonVariants({
+                      variant: audience === "all" ? "secondary" : "outline",
+                      size: "sm",
+                    })}
                   >
                     All available ({allCount})
                   </Link>
@@ -403,7 +467,8 @@ export default async function RecipesPage({
                       pageSize: data.pageSize,
                     })}
                     className={buttonVariants({
-                      variant: audience === "enterprise" ? "secondary" : "outline",
+                      variant:
+                        audience === "enterprise" ? "secondary" : "outline",
                       size: "sm",
                     })}
                   >
@@ -434,11 +499,22 @@ export default async function RecipesPage({
               <form action="/recipes" method="get" className="space-y-3">
                 <input type="hidden" name="page" value="1" />
                 <input type="hidden" name="audience" value={audience} />
-                {selectedCollection ? <input type="hidden" name="collection" value={selectedCollection} /> : null}
-                {favoritesOnly ? <input type="hidden" name="favorites" value="1" /> : null}
+                {selectedCollection ? (
+                  <input
+                    type="hidden"
+                    name="collection"
+                    value={selectedCollection}
+                  />
+                ) : null}
+                {favoritesOnly ? (
+                  <input type="hidden" name="favorites" value="1" />
+                ) : null}
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] sm:items-end">
                   <div>
-                    <label className="mb-2 block text-sm font-medium" htmlFor="q">
+                    <label
+                      className="mb-2 block text-sm font-medium"
+                      htmlFor="q"
+                    >
                       Search by title
                     </label>
                     <ClearableInput
@@ -450,7 +526,10 @@ export default async function RecipesPage({
                     />
                   </div>
                   <div className="sm:w-56">
-                    <label className="mb-2 block text-sm font-medium" htmlFor="category">
+                    <label
+                      className="mb-2 block text-sm font-medium"
+                      htmlFor="category"
+                    >
                       Category
                     </label>
                     <select
@@ -468,7 +547,10 @@ export default async function RecipesPage({
                     </select>
                   </div>
                   <div className="sm:w-40">
-                    <label className="mb-2 block text-sm font-medium" htmlFor="costing">
+                    <label
+                      className="mb-2 block text-sm font-medium"
+                      htmlFor="costing"
+                    >
                       Costing
                     </label>
                     <select
@@ -483,7 +565,10 @@ export default async function RecipesPage({
                     </select>
                   </div>
                   <div className="sm:w-28">
-                    <label className="mb-2 block text-sm font-medium" htmlFor="pageSize">
+                    <label
+                      className="mb-2 block text-sm font-medium"
+                      htmlFor="pageSize"
+                    >
                       Per page
                     </label>
                     <select
@@ -512,7 +597,9 @@ export default async function RecipesPage({
           <Card className="surface-panel border-dashed">
             <CardContent className="py-10 text-center">
               <p className="text-base font-medium">
-                {favoritesOnly ? "No favourite recipes found." : `No recipes found for: ${q || "your query"}.`}
+                {favoritesOnly
+                  ? "No favourite recipes found."
+                  : `No recipes found for: ${q || "your query"}.`}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {favoritesOnly
@@ -530,12 +617,26 @@ export default async function RecipesPage({
         >
           {recipes.map((recipe) => {
             const per100g = recipe.nutrition?.per100g;
-            const energyKj = readNumeric(per100g, ["energyKj", "energy_kj", "kj", "kJ"]);
-            const energyKcal = readNumeric(per100g, ["energyKcal", "energy_kcal", "kcal", "kCal"]);
+            const energyKj = readNumeric(per100g, [
+              "energyKj",
+              "energy_kj",
+              "kj",
+              "kJ",
+            ]);
+            const energyKcal = readNumeric(per100g, [
+              "energyKcal",
+              "energy_kcal",
+              "kcal",
+              "kCal",
+            ]);
             const isFavorite = favoriteIds.has(recipe.id);
-            const containedAllergens = listContainedAllergenLabels(recipe.allergens);
-            const allergenSummary = summarizeContainedAllergens(containedAllergens);
-            const allergenDetails = listContainedAllergensText(containedAllergens);
+            const containedAllergens = listContainedAllergenLabels(
+              recipe.allergens,
+            );
+            const allergenSummary =
+              summarizeContainedAllergens(containedAllergens);
+            const allergenDetails =
+              listContainedAllergensText(containedAllergens);
             const recipeCostingSummary = recipeCostingSummaries[recipe.id];
             const costingLabel = recipeCostingSummary
               ? recipeCostingSummary.costPerPortion !== null
@@ -563,16 +664,31 @@ export default async function RecipesPage({
             return (
               <MotionStaggerItem key={recipe.id}>
                 <Card className="group relative h-full overflow-hidden border-border/70 bg-gradient-to-br from-background via-background to-muted/20 transition duration-200 hover:-translate-y-1 hover:shadow-lg">
-                  <form action={setRecipeFavoriteAction} className="absolute right-4 top-4 z-20 sm:right-5 sm:top-5">
+                  <form
+                    action={setRecipeFavoriteAction}
+                    className="absolute right-4 top-4 z-20 sm:right-5 sm:top-5"
+                  >
                     <input type="hidden" name="recipeId" value={recipe.id} />
-                    <input type="hidden" name="value" value={String(!isFavorite)} />
+                    <input
+                      type="hidden"
+                      name="value"
+                      value={String(!isFavorite)}
+                    />
                     <FavoriteToggleButton
                       filled={isFavorite}
-                      label={isFavorite ? "Remove from favorites" : "Save as favorite"}
-                      pendingLabel={isFavorite ? "Removing favourite" : "Saving favourite"}
+                      label={
+                        isFavorite
+                          ? "Remove from favorites"
+                          : "Save as favorite"
+                      }
+                      pendingLabel={
+                        isFavorite ? "Removing favourite" : "Saving favourite"
+                      }
                       className={cn(
                         "h-9 w-9 overflow-visible rounded-full bg-background/90 p-0 shadow-sm backdrop-blur sm:h-10 sm:w-10",
-                        isFavorite ? "text-amber-500 hover:text-amber-600" : "text-muted-foreground hover:text-foreground",
+                        isFavorite
+                          ? "text-amber-500 hover:text-amber-600"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     />
                   </form>
@@ -583,7 +699,11 @@ export default async function RecipesPage({
                         {/* Each recipe has a stable fallback placeholder until a real image is provided. */}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={(recipe.imageUrl ?? "/recipe-placeholder.svg").trim() || "/recipe-placeholder.svg"}
+                          src={
+                            (
+                              recipe.imageUrl ?? "/recipe-placeholder.svg"
+                            ).trim() || "/recipe-placeholder.svg"
+                          }
                           alt={recipe.title}
                           loading="lazy"
                           className="h-24 w-full object-cover sm:h-32"
@@ -600,7 +720,9 @@ export default async function RecipesPage({
                             <p
                               className={cn(
                                 "text-[10px] font-medium uppercase tracking-[0.18em]",
-                                costPerPortionLabel ? "text-emerald-700" : "text-muted-foreground",
+                                costPerPortionLabel
+                                  ? "text-emerald-700"
+                                  : "text-muted-foreground",
                               )}
                             >
                               {costStatusLabel}
@@ -622,75 +744,93 @@ export default async function RecipesPage({
                           <Badge variant="outline" className="bg-background/80">
                             {recipe.collection}
                           </Badge>
-                          <Badge variant="secondary" className="bg-muted/70 text-foreground">
+                          <Badge
+                            variant="secondary"
+                            className="bg-muted/70 text-foreground"
+                          >
                             {categoryLabel}
                           </Badge>
                         </div>
 
                         <div className="space-y-1.5">
                           <CardTitle className="text-base leading-tight sm:text-lg">
-                          <Link
-                            href={`/recipes/${recipe.id}?audience=${encodeURIComponent(audience)}${
-                              favoritesOnly ? "&favorites=1" : ""
-                            }${recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""}&returnTo=${encodeURIComponent(currentListHref)}`}
-                            className="link-hover"
-                          >
-                            {recipe.title}
-                          </Link>
-                        </CardTitle>
-                        <CardDescription className="text-sm">
-                          RN {recipe.pluNumber}
-                          {costingLabel && !costPerPortionLabel ? ` | ${costingLabel}` : ""}
-                        </CardDescription>
-                        <div
-                          className="group/allergens relative rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs text-muted-foreground"
-                        >
-                          <span className="block">{allergenSummary}</span>{/*
+                            <Link
+                              href={`/recipes/${recipe.id}?audience=${encodeURIComponent(audience)}${
+                                favoritesOnly ? "&favorites=1" : ""
+                              }${recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""}&returnTo=${encodeURIComponent(currentListHref)}`}
+                              className="link-hover"
+                            >
+                              {recipe.title}
+                            </Link>
+                          </CardTitle>
+                          <CardDescription className="text-sm">
+                            RN {recipe.pluNumber}
+                            {costingLabel && !costPerPortionLabel
+                              ? ` | ${costingLabel}`
+                              : ""}
+                          </CardDescription>
+                          <div className="group/allergens relative rounded-lg border border-border/60 bg-background/70 px-3 py-2 text-xs text-muted-foreground">
+                            <span className="block">{allergenSummary}</span>
+                            {/*
                             ? containedAllergens.map((name) => `✓ ${name}`).join(", ")
-                            */}{containedAllergens.length > 0 ? (
-                            <div className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-56 rounded-lg border border-border/80 bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground shadow-xl group-hover/allergens:block">
-                              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                                All Allergens
-                              </p>
-                              <p className="mt-1">{allergenDetails}</p>
-                            </div>
-                          ) : null}
-                        </div>
+                            */}
+                            {containedAllergens.length > 0 ? (
+                              <div className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-56 rounded-lg border border-border/80 bg-popover px-3 py-2 text-xs leading-relaxed text-popover-foreground shadow-xl group-hover/allergens:block">
+                                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                                  All Allergens
+                                </p>
+                                <p className="mt-1">{allergenDetails}</p>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>
                     <div className="mt-4 space-y-3">
                       {isOwner ? (
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={recipe.visibility?.public ? "success" : "outline"}>
+                          <Badge
+                            variant={
+                              recipe.visibility?.public ? "success" : "outline"
+                            }
+                          >
                             Public {recipe.visibility?.public ? "ON" : "OFF"}
                           </Badge>
-                          <Badge variant={recipe.visibility?.enterprise ? "secondary" : "outline"}>
-                            Enterprise {recipe.visibility?.enterprise ? "ON" : "OFF"}
+                          <Badge
+                            variant={
+                              recipe.visibility?.enterprise
+                                ? "secondary"
+                                : "outline"
+                            }
+                          >
+                            Enterprise{" "}
+                            {recipe.visibility?.enterprise ? "ON" : "OFF"}
                           </Badge>
                         </div>
                       ) : null}
 
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-border/70 bg-background/65 p-3">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                          Portions
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">
-                          {recipe.portions ?? "-"}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-border/70 bg-background/65 p-3">
-                        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                          Energy / 100g
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">
-                          {formatNumber(energyKcal)} kcal
-                        </p>
-                        <p className="text-xs text-muted-foreground">{formatNumber(energyKj)} kJ</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-xl border border-border/70 bg-background/65 p-3">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                            Portions
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-foreground">
+                            {formatPortionSummary(
+                              recipe.portions,
+                              recipe.portionNetWeightG,
+                            )}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/70 bg-background/65 p-3">
+                          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                            Energy / 100g
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-foreground">
+                            {formatNumber(energyKcal)} kcal
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   </CardContent>
                 </Card>
               </MotionStaggerItem>
@@ -702,8 +842,11 @@ export default async function RecipesPage({
       <div className="mt-4 flex items-center justify-between gap-3">
         <div className="text-sm text-muted-foreground">
           <p>
-            Page <span className="font-medium text-foreground">{data.page}</span> of{" "}
-            <span className="font-medium text-foreground">{data.totalPages}</span>
+            Page{" "}
+            <span className="font-medium text-foreground">{data.page}</span> of{" "}
+            <span className="font-medium text-foreground">
+              {data.totalPages}
+            </span>
           </p>
         </div>
 
@@ -725,7 +868,12 @@ export default async function RecipesPage({
               Previous
             </Link>
           ) : (
-            <span className={cn(buttonVariants({ variant: "outline", size: "sm" }), "pointer-events-none opacity-50")}>
+            <span
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "pointer-events-none opacity-50",
+              )}
+            >
               Previous
             </span>
           )}
@@ -733,7 +881,10 @@ export default async function RecipesPage({
           <div className="flex items-center gap-1">
             {pageTokens.map((token, index) =>
               token === "..." ? (
-                <span key={`ellipsis-${index}`} className="px-1 text-sm text-muted-foreground">
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-1 text-sm text-muted-foreground"
+                >
                   ...
                 </span>
               ) : token === data.page ? (
@@ -759,7 +910,10 @@ export default async function RecipesPage({
                     page: token,
                     pageSize: data.pageSize,
                   })}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "min-w-8 px-2")}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "min-w-8 px-2",
+                  )}
                 >
                   {token}
                 </Link>
@@ -784,7 +938,12 @@ export default async function RecipesPage({
               Next
             </Link>
           ) : (
-            <span className={cn(buttonVariants({ variant: "outline", size: "sm" }), "pointer-events-none opacity-50")}>
+            <span
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "pointer-events-none opacity-50",
+              )}
+            >
               Next
             </span>
           )}

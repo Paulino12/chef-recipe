@@ -66,6 +66,7 @@ export type PublicRecipeCard = {
   categoryPath?: string[];
   allergens?: Partial<Record<AllergenSlug, AllergenStatus>>;
   portions: number | null;
+  portionNetWeightG?: number | null;
   nutrition?: {
     per100g?: Record<string, number>;
   };
@@ -251,6 +252,7 @@ export async function searchRecipes(query: string) {
       title,
       categoryPath,
       portions,
+      "portionNetWeightG": nutrition.portionNetWeightG,
       allergens,
       nutrition,
       nutritionMeta,
@@ -420,6 +422,7 @@ export async function listAccessibleRecipes(
       title,
       categoryPath,
       portions,
+      "portionNetWeightG": nutrition.portionNetWeightG,
       allergens,
       nutrition,
       nutritionMeta,
