@@ -663,7 +663,7 @@ export default async function RecipesPage({
 
             return (
               <MotionStaggerItem key={recipe.id}>
-                <Card className="group relative h-full overflow-hidden border-border/70 bg-gradient-to-br from-background via-background to-muted/20 transition duration-200 hover:-translate-y-1 hover:shadow-lg">
+                <Card className="group relative h-full overflow-hidden border-border/70 bg-linear-to-br from-background via-background to-muted/20 transition duration-200 hover:-translate-y-1 hover:shadow-lg">
                   <form
                     action={setRecipeFavoriteAction}
                     className="absolute right-4 top-4 z-20 sm:right-5 sm:top-5"
@@ -745,8 +745,7 @@ export default async function RecipesPage({
                             {recipe.collection}
                           </Badge>
                           <Badge
-                            variant="secondary"
-                            className="bg-muted/70 text-foreground"
+                            variant="category"
                           >
                             {categoryLabel}
                           </Badge>

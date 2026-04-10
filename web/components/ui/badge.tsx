@@ -7,6 +7,7 @@ const badgeVariantStyles = {
   secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/85",
   outline: "border-border text-foreground",
   success: "border-transparent bg-emerald-100 text-emerald-800",
+  category: "border-transparent bg-teal-100 text-teal-900 hover:bg-teal-100",
   muted: "border-transparent bg-muted text-muted-foreground",
 } as const;
 
