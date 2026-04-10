@@ -655,7 +655,7 @@ export default async function RecipesPage({
                   )
                 : null;
             const costStatusLabel = costPerPortionLabel
-              ? "Cost / Portion"
+              ? "Portion Cost"
               : recipeCostingSummary
                 ? "Saved costing"
                 : "";
