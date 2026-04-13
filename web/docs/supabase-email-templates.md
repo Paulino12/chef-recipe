@@ -36,7 +36,7 @@ Suggested HTML:
         Once confirmed, you can access recipes, save favourites, and manage your account from one place.
       </p>
       <a
-        href="{{ .ConfirmationURL }}"
+        href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email"
         style="display:inline-block;background:#7a5741;color:#ffffff;text-decoration:none;font-weight:600;padding:14px 22px;border-radius:14px;"
       >
         Confirm account
@@ -80,7 +80,7 @@ Suggested HTML:
         For your security, this link is time-limited and should only be used by you.
       </p>
       <a
-        href="{{ .ConfirmationURL }}"
+        href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery"
         style="display:inline-block;background:#7a5741;color:#ffffff;text-decoration:none;font-weight:600;padding:14px 22px;border-radius:14px;"
       >
         Reset password
@@ -99,7 +99,7 @@ Suggested HTML:
 
 ## Notes
 
-- Keep `{{ .ConfirmationURL }}` in the button link so Supabase handles the correct token flow.
+- These templates use the app's `/auth/confirm` route so the token can be verified server-side before redirecting the user into the correct UI flow.
 - After updating templates, send a fresh email and test both:
   - `Confirm signup`
   - `Reset password`
