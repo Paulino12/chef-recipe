@@ -62,6 +62,15 @@ export async function GET(req: NextRequest) {
 
   if (type === "recovery" && verifyResult.data.session?.access_token) {
     const redirectUrl = new URL("/reset-password", req.url);
+    const fragment = new URLSearchParams({
+      access_token: verifyResult.data.session.access_token,
+      refresh_token: verifyResult.data.session.refresh_token ?? "",
+      expires_at: String(verifyResult.data.session.expires_at ?? ""),
+      expires_in: String(verifyResult.data.session.expires_in ?? ""),
+      token_type: verifyResult.data.session.token_type ?? "bearer",
+      type: "recovery",
+    });
+    redirectUrl.hash = fragment.toString();
     const response = NextResponse.redirect(redirectUrl);
 
     const expiresAt = verifyResult.data.session.expires_at ?? null;

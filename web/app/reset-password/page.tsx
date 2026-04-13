@@ -29,21 +29,67 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (!supabase) return;
+    const client = supabase;
 
     let mounted = true;
+
+    async function hydrateRecoverySessionFromHash() {
+      const hash = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash;
+      if (!hash) return;
+
+      const params = new URLSearchParams(hash);
+      const accessToken = params.get("access_token")?.trim() ?? "";
+      const refreshToken = params.get("refresh_token")?.trim() ?? "";
+      const expiresAtRaw = params.get("expires_at")?.trim() ?? "";
+      const flowType = params.get("type")?.trim() ?? "";
+
+      if (!accessToken || !refreshToken || flowType !== "recovery") return;
+
+      const expiresAt = Number(expiresAtRaw);
+      const { error: sessionError } = await client.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (!mounted) return;
+
+      if (sessionError) {
+        setError(sessionError.message || "The reset link is invalid or has expired.");
+        return;
+      }
+
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          expires_at: Number.isFinite(expiresAt) ? expiresAt : null,
+        }),
+      });
+
+      setSessionReady(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = client.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
         setSessionReady(true);
       }
     });
 
-    supabase.auth.getSession().then(({ data }) => {
+    client.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       if (data.session) setSessionReady(true);
     });
+    void hydrateRecoverySessionFromHash();
 
     return () => {
       mounted = false;
