@@ -2,6 +2,10 @@ import { createClient, type Session } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
+const publicAppBaseUrl =
+  process.env.NEXT_PUBLIC_APP_BASE_URL?.trim() ??
+  process.env.APP_BASE_URL?.trim() ??
+  "";
 
 export function isSupabaseBrowserConfigured() {
   return Boolean(supabaseUrl && supabaseAnonKey);
@@ -19,6 +23,10 @@ export function createSupabaseBrowserClient() {
 }
 
 export function buildBrowserRedirectUrl(pathname: string) {
+  if (publicAppBaseUrl) {
+    return new URL(pathname, publicAppBaseUrl).toString();
+  }
+
   if (typeof window === "undefined") return pathname;
   return new URL(pathname, window.location.origin).toString();
 }

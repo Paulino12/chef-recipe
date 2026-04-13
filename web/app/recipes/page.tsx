@@ -744,11 +744,7 @@ export default async function RecipesPage({
                           <Badge variant="outline" className="bg-background/80">
                             {recipe.collection}
                           </Badge>
-                          <Badge
-                            variant="category"
-                          >
-                            {categoryLabel}
-                          </Badge>
+                          <Badge variant="category">{categoryLabel}</Badge>
                         </div>
 
                         <div className="space-y-1.5">
