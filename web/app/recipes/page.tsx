@@ -409,73 +409,6 @@ export default async function RecipesPage({
                     </Link>
                   );
                 })}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {canViewPublic && canViewEnterprise ? (
-                  <Link
-                    href={buildRecipesHref({
-                      q,
-                      collection: selectedCollection,
-                      category: activeCategory,
-                      audience: "all",
-                      favoritesOnly,
-                      costing: selectedCostingFilter,
-                      page: 1,
-                      pageSize: data.pageSize,
-                    })}
-                    className={buttonVariants({
-                      variant: audience === "all" ? "secondary" : "outline",
-                      size: "sm",
-                    })}
-                  >
-                    All available ({allCount})
-                  </Link>
-                ) : null}
-
-                {canViewPublic ? (
-                  <Link
-                    href={buildRecipesHref({
-                      q,
-                      collection: selectedCollection,
-                      category: activeCategory,
-                      audience: "public",
-                      favoritesOnly,
-                      costing: selectedCostingFilter,
-                      page: 1,
-                      pageSize: data.pageSize,
-                    })}
-                    className={buttonVariants({
-                      variant: audience === "public" ? "secondary" : "outline",
-                      size: "sm",
-                    })}
-                  >
-                    Public ({publicCount})
-                  </Link>
-                ) : null}
-
-                {canViewEnterprise ? (
-                  <Link
-                    href={buildRecipesHref({
-                      q,
-                      collection: selectedCollection,
-                      category: activeCategory,
-                      audience: "enterprise",
-                      favoritesOnly,
-                      costing: selectedCostingFilter,
-                      page: 1,
-                      pageSize: data.pageSize,
-                    })}
-                    className={buttonVariants({
-                      variant:
-                        audience === "enterprise" ? "secondary" : "outline",
-                      size: "sm",
-                    })}
-                  >
-                    Enterprise ({enterpriseCount})
-                  </Link>
-                ) : null}
-
                 <Link
                   href={buildRecipesHref({
                     q,
@@ -495,6 +428,91 @@ export default async function RecipesPage({
                   Favourites ({favoritesCount})
                 </Link>
               </div>
+
+              {/* <div className="flex flex-wrap gap-2"> */}
+                {/* {canViewPublic && canViewEnterprise ? (
+                  <Link
+                    href={buildRecipesHref({
+                      q,
+                      collection: selectedCollection,
+                      category: activeCategory,
+                      audience: "all",
+                      favoritesOnly,
+                      costing: selectedCostingFilter,
+                      page: 1,
+                      pageSize: data.pageSize,
+                    })}
+                    className={buttonVariants({
+                      variant: audience === "all" ? "secondary" : "outline",
+                      size: "sm",
+                    })}
+                  >
+                    All available ({allCount})
+                  </Link>
+                ) : null} */}
+
+                {/* {canViewPublic ? (
+                  <Link
+                    href={buildRecipesHref({
+                      q,
+                      collection: selectedCollection,
+                      category: activeCategory,
+                      audience: "public",
+                      favoritesOnly,
+                      costing: selectedCostingFilter,
+                      page: 1,
+                      pageSize: data.pageSize,
+                    })}
+                    className={buttonVariants({
+                      variant: audience === "public" ? "secondary" : "outline",
+                      size: "sm",
+                    })}
+                  >
+                    Public ({publicCount})
+                  </Link>
+                ) : null} */}
+
+                {/* {canViewEnterprise ? (
+                  <Link
+                    href={buildRecipesHref({
+                      q,
+                      collection: selectedCollection,
+                      category: activeCategory,
+                      audience: "enterprise",
+                      favoritesOnly,
+                      costing: selectedCostingFilter,
+                      page: 1,
+                      pageSize: data.pageSize,
+                    })}
+                    className={buttonVariants({
+                      variant:
+                        audience === "enterprise" ? "secondary" : "outline",
+                      size: "sm",
+                    })}
+                  >
+                    Enterprise ({enterpriseCount})
+                  </Link>
+                ) : null} */}
+
+                {/* <Link
+                  href={buildRecipesHref({
+                    q,
+                    collection: selectedCollection,
+                    category: activeCategory,
+                    audience,
+                    favoritesOnly: !favoritesOnly,
+                    costing: selectedCostingFilter,
+                    page: 1,
+                    pageSize: data.pageSize,
+                  })}
+                  className={buttonVariants({
+                    variant: favoritesOnly ? "secondary" : "outline",
+                    size: "sm",
+                  })}
+                >
+                  Favourites ({favoritesCount})
+                </Link> */}
+              {/* </div> */}
 
               <form action="/recipes" method="get" className="space-y-3">
                 <input type="hidden" name="page" value="1" />

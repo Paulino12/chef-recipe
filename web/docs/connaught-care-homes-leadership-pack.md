@@ -1,6 +1,6 @@
-# Connaught Care Homes Manager Presentation Script
+# Connaught Care Homes Leadership Pack
 
-## Brief Read-Aloud Version
+## Manager Presentation Script
 
 I wanted to briefly show you a recipe platform I have built which could support kitchen teams across Connaught Care Homes.
 
@@ -16,14 +16,55 @@ What I am proposing is a practical operational tool that adds value where it mat
 
 If leadership feels there is potential here, the next step would simply be a short pilot or demonstration so the business can assess the practical benefit before making any wider commitment.
 
-## Shorter Version
+## Suggested Fee Structure
 
-I wanted to show you a recipe platform that could help kitchen teams across Connaught Care Homes work more efficiently and more consistently.
+### Recommended Approach
 
-It gives chefs a clearer and more practical way to access recipes, including ingredients, method, allergens, nutrition, portions, and costing, in a format that is much easier to use day to day.
+The easiest proposal for leadership to approve is a low-risk pilot first.
 
-For the business, the benefit is better consistency across homes, simpler onboarding, clearer recipe control, and a stronger foundation for standardisation.
+That keeps the decision simple:
 
-Across six homes, even small improvements in speed and clarity can deliver meaningful operational value.
+- small upfront commitment
+- clear test period
+- measurable practical value
+- easy path to wider rollout if the pilot works
 
-If there is interest, the next step would be a short pilot so the company can test the value in practice before deciding on a wider rollout.
+### 60-Day Pilot
+
+- GBP 295 per month
+- up to 2 homes included
+- no long-term contract during the pilot
+
+Included:
+
+- hosting
+- user access setup
+- manager support
+- bug fixes
+- minor improvements based on feedback
+- mobile and web access for day-to-day use
+
+### Optional Setup And Onboarding
+
+- GBP 350 one-off
+
+Suggested concession:
+
+- credit this fee against the first full rollout invoice if Connaught proceeds
+
+### Full Rollout Option
+
+- GBP 995 per month for all 6 homes
+
+Included:
+
+- hosting and maintenance
+- ongoing support
+- bug fixes
+- minor feature refinements
+- recipe access management
+- continued platform improvements
+
+## Suggested Closing
+
+My recommendation would be to keep the initial decision easy: approve a short pilot, test the value in practice, and then decide whether it makes sense to roll it out more widely across the group.
