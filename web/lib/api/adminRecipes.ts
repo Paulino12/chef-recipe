@@ -57,7 +57,7 @@ type RelationRecipeRow = {
   id: string;
   title: string;
   collection: RecipeCollection;
-  ingredients?: Array<{ item?: string; text?: string }>;
+  ingredients?: Array<{ item?: string; text?: string; subRecipeId?: string }>;
 };
 
 type TitleIndexRow = {
@@ -222,7 +222,7 @@ const ADMIN_RELATION_GRAPH_QUERY = `
     "id": _id,
     title,
     "collection": coalesce(collection, "Dining"),
-    ingredients[]{ item, text }
+    ingredients[]{ item, text, "subRecipeId": subRecipe._ref }
   }
 `;
 
@@ -372,7 +372,6 @@ async function buildRelationGraph() {
 
   for (const row of rows) {
     const labels = collectPtnLabels(row.ingredients);
-    if (!labels.length) continue;
 
     for (const label of labels) {
       const cacheKey = `${row.collection}::${label}`;
@@ -381,6 +380,14 @@ async function buildRelationGraph() {
       }
       const targetId = labelTargetCache.get(cacheKey);
       if (!targetId || targetId === row.id) continue;
+
+      adjacency.get(row.id)?.add(targetId);
+      adjacency.get(targetId)?.add(row.id);
+    }
+
+    for (const ingredient of row.ingredients ?? []) {
+      const targetId = ingredient.subRecipeId?.replace(/^drafts\./, "");
+      if (!targetId || targetId === row.id || !adjacency.has(targetId)) continue;
 
       adjacency.get(row.id)?.add(targetId);
       adjacency.get(targetId)?.add(row.id);

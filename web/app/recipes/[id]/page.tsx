@@ -20,8 +20,9 @@ import {
 import { PrintRecipeButton } from "@/components/print-recipe-button";
 import { getRecipeCostSummary } from "@/lib/api/recipeCostings";
 import {
-  extractPtnReference,
   findSubRecipeTargets,
+  getIngredientPtnLabel,
+  getIngredientSubRecipeReference,
   getAccessibleRecipeById,
   getRecipeById,
   listContainedAllergenLabels,
@@ -292,15 +293,18 @@ export default async function RecipePage({
   const ingredientRows = Array.isArray(recipe.ingredients)
     ? (recipe.ingredients as Array<Record<string, unknown>>)
     : [];
+  const explicitSubRecipeIds = [
+    ...new Set(
+      ingredientRows
+        .map((ingredient) => getIngredientSubRecipeReference(ingredient)?.id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
 
   const subRecipeLabels = [
     ...new Set(
       ingredientRows
-        .map((ingredient) => {
-          const fromItem = extractPtnReference(ingredient.item);
-          const fromText = extractPtnReference(ingredient.text);
-          return fromItem ?? fromText;
-        })
+        .map((ingredient) => getIngredientPtnLabel(ingredient))
         .filter((value): value is string => Boolean(value)),
     ),
   ];
@@ -316,13 +320,14 @@ export default async function RecipePage({
   const subRecipeIds = subRecipeLabels
     .map((label) => subRecipeTargets[label]?.id)
     .filter((value): value is string => Boolean(value));
+  const relatedSubRecipeIds = [...new Set([...explicitSubRecipeIds, ...subRecipeIds])];
   const relatedRecipes = await listRelatedRecipeCards({
     audience,
     includeAll: isOwner,
     collection: recipe.collection,
     categoryPath: recipe.categoryPath,
     currentRecipeId: recipe.id,
-    subRecipeIds,
+    subRecipeIds: relatedSubRecipeIds,
     favoriteRecipeIds: [...favoriteIds],
     limit: 7,
   });
@@ -672,22 +677,31 @@ export default async function RecipePage({
                 {recipe.ingredients.map(
                   (ingredient: Record<string, unknown>, index: number) => {
                     const text = String(ingredient.text ?? "");
-                    const ptnLabel =
-                      extractPtnReference(ingredient.item) ??
-                      extractPtnReference(text);
-                    const target = ptnLabel ? subRecipeTargets[ptnLabel] : null;
-                    const fallbackHref = ptnLabel
+                    const explicitSubRecipe = getIngredientSubRecipeReference(ingredient);
+                    const ptnLabel = getIngredientPtnLabel({ ...ingredient, text });
+                    const target =
+                      !explicitSubRecipe && ptnLabel ? subRecipeTargets[ptnLabel] : null;
+                    const fallbackHref = !explicitSubRecipe && ptnLabel
                       ? `/recipes?audience=${encodeURIComponent(audience)}&q=${encodeURIComponent(ptnLabel)}${
                           recipe.collection
                             ? `&collection=${encodeURIComponent(recipe.collection)}`
                             : ""
                         }`
                       : null;
-                    const targetHref = target?.directMatch
-                      ? `/recipes/${encodeURIComponent(target.id)}?audience=${encodeURIComponent(audience)}${
+                    const targetHref = explicitSubRecipe
+                      ? `/recipes/${encodeURIComponent(explicitSubRecipe.id)}?audience=${encodeURIComponent(audience)}${
+                          isOwner ? "&from=owner" : ""
+                        }${
+                          explicitSubRecipe.collection
+                            ? `&collection=${encodeURIComponent(explicitSubRecipe.collection)}`
+                            : ""
+                        }`
+                      : target?.directMatch
+                        ? `/recipes/${encodeURIComponent(target.id)}?audience=${encodeURIComponent(audience)}${
                           isOwner ? "&from=owner" : ""
                         }${recipe.collection ? `&collection=${encodeURIComponent(recipe.collection)}` : ""}`
-                      : null;
+                        : null;
+                    const subRecipeLabel = explicitSubRecipe?.title ?? target?.title ?? ptnLabel;
 
                     return (
                       <li
@@ -695,15 +709,15 @@ export default async function RecipePage({
                         className="rounded-md border border-border/70 bg-background/70 p-3 text-sm"
                       >
                         <p className="font-medium">{text}</p>
-                        {ptnLabel ? (
+                        {subRecipeLabel ? (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Sub recipe:{" "}
+                            Sub-recipe:{" "}
                             {targetHref ? (
                               <Link
                                 href={targetHref}
                                 className="link-hover text-foreground"
                               >
-                                {target?.title ?? ptnLabel}
+                                {subRecipeLabel}
                               </Link>
                             ) : fallbackHref ? (
                               <Link

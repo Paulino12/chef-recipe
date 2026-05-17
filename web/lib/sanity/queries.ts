@@ -7,7 +7,19 @@ export const RECIPES_LIST_QUERY = `
     title,
     categoryPath,
     portions,
-    ingredients[]{text, qty, unit, item},
+    ingredients[]{
+      text,
+      qty,
+      unit,
+      item,
+      "subRecipe": subRecipe->{
+        "id": _id,
+        pluNumber,
+        "collection": coalesce(collection, "Dining"),
+        title,
+        visibility
+      }
+    },
     method,
     allergens,
     nutrition,
@@ -25,7 +37,19 @@ export const RECIPE_BY_ID_QUERY = `
     title,
     categoryPath,
     portions,
-    ingredients[]{text, qty, unit, item},
+    ingredients[]{
+      text,
+      qty,
+      unit,
+      item,
+      "subRecipe": subRecipe->{
+        "id": _id,
+        pluNumber,
+        "collection": coalesce(collection, "Dining"),
+        title,
+        visibility
+      }
+    },
     method,
     allergens,
     nutrition,

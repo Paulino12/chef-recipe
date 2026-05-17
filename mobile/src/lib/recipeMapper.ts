@@ -49,13 +49,32 @@ function mapIngredient(value: unknown): RecipeIngredient {
     qty?: unknown;
     unit?: unknown;
     item?: unknown;
+    subRecipe?: unknown;
   };
+  const subRecipe =
+    source.subRecipe && typeof source.subRecipe === "object"
+      ? (source.subRecipe as {
+          id?: unknown;
+          pluNumber?: unknown;
+          collection?: unknown;
+          title?: unknown;
+        })
+      : null;
 
   return {
     text: asString(source.text),
     qty: asNumber(source.qty),
     unit: asOptionalString(source.unit),
     item: asOptionalString(source.item),
+    subRecipe:
+      subRecipe && typeof subRecipe.id === "string" && typeof subRecipe.title === "string"
+        ? {
+            id: subRecipe.id,
+            pluNumber: asNumber(subRecipe.pluNumber),
+            collection: asString(subRecipe.collection, "Dining"),
+            title: subRecipe.title,
+          }
+        : null,
   };
 }
 

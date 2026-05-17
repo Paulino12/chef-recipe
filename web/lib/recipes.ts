@@ -39,6 +39,7 @@ export type Recipe = {
     qty: number | null;
     unit: string | null;
     item: string | null;
+    subRecipe?: RecipeSubRecipeReference | null;
   }>;
   method: {
     steps: Array<{ number: number; text: string }>;
@@ -50,6 +51,14 @@ export type Recipe = {
   portionNetWeightG: number | null;
   visibility: { enterprise: boolean; public: boolean };
   source?: { pdfPath: string };
+};
+
+export type RecipeSubRecipeReference = {
+  id: string;
+  pluNumber: number | null;
+  collection: RecipeCollection;
+  title: string;
+  visibility?: { enterprise?: boolean; public?: boolean } | null;
 };
 
 export const PUBLIC_PAGE_SIZES = [10, 50, 100] as const;
@@ -126,15 +135,19 @@ export type SubRecipeTarget = {
   directMatch: boolean;
 };
 
-function visibilityPredicate(audience: RecipeAudienceFilter) {
+function visibilityPredicateForPath(audience: RecipeAudienceFilter, path: string) {
   switch (audience) {
     case "public":
-      return "coalesce(visibility.public, false) == true";
+      return `coalesce(${path}.public, false) == true`;
     case "enterprise":
-      return "coalesce(visibility.enterprise, false) == true";
+      return `coalesce(${path}.enterprise, false) == true`;
     case "all":
-      return "(coalesce(visibility.public, false) == true || coalesce(visibility.enterprise, false) == true)";
+      return `(coalesce(${path}.public, false) == true || coalesce(${path}.enterprise, false) == true)`;
   }
+}
+
+function visibilityPredicate(audience: RecipeAudienceFilter) {
+  return visibilityPredicateForPath(audience, "visibility");
 }
 
 function costingPredicate() {
@@ -477,6 +490,7 @@ export async function getRecipeById(id: string) {
  */
 export async function getAccessibleRecipeById(id: string, audience: RecipeAudienceFilter) {
   const visibility = visibilityPredicate(audience);
+  const subRecipeVisibility = visibilityPredicateForPath(audience, "subRecipe->visibility");
   const query = `
     *[
       _type == "recipe" &&
@@ -490,7 +504,22 @@ export async function getAccessibleRecipeById(id: string, audience: RecipeAudien
       title,
       categoryPath,
       portions,
-      ingredients[]{ text, qty, unit, item },
+      ingredients[]{
+        text,
+        qty,
+        unit,
+        item,
+        "subRecipe": select(
+          defined(subRecipe._ref) && ${subRecipeVisibility} => subRecipe->{
+            "id": _id,
+            pluNumber,
+            "collection": coalesce(collection, "Dining"),
+            title,
+            visibility
+          },
+          null
+        )
+      },
       method,
       allergens,
       nutrition,
@@ -575,6 +604,29 @@ export function extractPtnReference(value: unknown) {
   if (!match) return null;
   const token = match[1]?.trim() || "";
   return token || null;
+}
+
+export function getIngredientSubRecipeReference(
+  ingredient: { subRecipe?: unknown } | null | undefined,
+): RecipeSubRecipeReference | null {
+  const subRecipe = ingredient?.subRecipe;
+  if (!subRecipe || typeof subRecipe !== "object") return null;
+
+  const source = subRecipe as Partial<RecipeSubRecipeReference>;
+  if (typeof source.id !== "string" || !source.id.trim()) return null;
+  if (typeof source.title !== "string" || !source.title.trim()) return null;
+
+  return {
+    id: source.id,
+    title: source.title,
+    pluNumber: typeof source.pluNumber === "number" ? source.pluNumber : null,
+    collection: normalizeCollection(source.collection) ?? "Dining",
+    visibility: source.visibility ?? null,
+  };
+}
+
+export function getIngredientPtnLabel(ingredient: { item?: unknown; text?: unknown }) {
+  return extractPtnReference(ingredient.item) ?? extractPtnReference(ingredient.text);
 }
 
 /**
@@ -793,7 +845,7 @@ export async function listRelatedRecipeCards(options: {
   const subRecipeRows = await fetchRecipeCardsByIds(options.subRecipeIds ?? [], {
     audience: options.audience,
     includeAll: options.includeAll,
-    collection: options.collection,
+    collection: null,
   });
   pushRows(shuffleArray(subRecipeRows), "subrecipe");
 

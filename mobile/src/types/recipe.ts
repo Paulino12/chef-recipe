@@ -14,6 +14,12 @@ export type RecipeIngredient = {
   qty: number | null;
   unit: string | null;
   item: string | null;
+  subRecipe: {
+    id: string;
+    pluNumber: number | null;
+    collection: string;
+    title: string;
+  } | null;
 };
 
 export type MethodBlock = {

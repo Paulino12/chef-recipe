@@ -52,7 +52,22 @@ export async function GET(
       title,
       categoryPath,
       portions,
-      ingredients[]{ text, qty, unit, item },
+      ingredients[]{
+        text,
+        qty,
+        unit,
+        item,
+        "subRecipe": select(
+          defined(subRecipe._ref) && subRecipe->visibility.${audience} == true => subRecipe->{
+            "id": _id,
+            pluNumber,
+            "collection": coalesce(collection, "Dining"),
+            title,
+            visibility
+          },
+          null
+        )
+      },
       method,
       allergens,
       nutrition,

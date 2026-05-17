@@ -18,7 +18,13 @@ import {
 } from "@/lib/api/nutritionCatalog";
 import { getRecipeCosting, listCostedRecipesSearch } from "@/lib/api/recipeCostings";
 import { getServerAccessSession } from "@/lib/api/serverSession";
-import { extractPtnReference, findSubRecipeTargets, getRecipeById } from "@/lib/recipes";
+import {
+  findSubRecipeTargets,
+  getIngredientPtnLabel,
+  getIngredientSubRecipeReference,
+  getRecipeById,
+  type Recipe,
+} from "@/lib/recipes";
 import {
   applySubRecipeCostingToRecipeCostLine,
   buildRecipeIngredientFingerprint,
@@ -143,14 +149,21 @@ export default async function OwnerRecipeCostingPage({
     sourcePdfPath: recipe.source?.pdfPath ?? null,
     nutritionCatalogConnected: nutritionCatalogStatus.configured,
   });
-  const ingredientRows = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-  const subRecipeLabels: Array<string | null> = ingredientRows.map(
-    (ingredient: (typeof ingredientRows)[number]) =>
-      extractPtnReference(ingredient.item) ?? extractPtnReference(ingredient.text),
+  const ingredientRows: Recipe["ingredients"] = Array.isArray(recipe.ingredients)
+    ? recipe.ingredients
+    : [];
+  const explicitSubRecipeRefs = ingredientRows.map((ingredient) =>
+    getIngredientSubRecipeReference(ingredient),
   );
-  const ptnLineCount = subRecipeLabels.filter(
-    (label: string | null): label is string => Boolean(label),
-  ).length;
+  const subRecipeLabels: Array<string | null> = ingredientRows.map(
+    (ingredient: (typeof ingredientRows)[number], index: number) =>
+      explicitSubRecipeRefs[index] ? null : getIngredientPtnLabel(ingredient),
+  );
+  const subRecipeLineCount =
+    explicitSubRecipeRefs.filter(Boolean).length +
+    subRecipeLabels.filter(
+      (label: string | null): label is string => Boolean(label),
+    ).length;
 
   let setupError = "";
   let savedCosting = null as Awaited<ReturnType<typeof getRecipeCosting>>;
@@ -177,25 +190,58 @@ export default async function OwnerRecipeCostingPage({
         ),
       ),
     ];
-    if (uniqueSubRecipeLabels.length > 0) {
-      const subRecipeTargets = await findSubRecipeTargets(uniqueSubRecipeLabels, {
-        audience: "all",
-        includeAll: true,
-        collection: recipe.collection,
-      });
+    const explicitTargetIds = explicitSubRecipeRefs
+      .map((ref) => ref?.id)
+      .filter((value): value is string => Boolean(value));
+    if (uniqueSubRecipeLabels.length > 0 || explicitTargetIds.length > 0) {
+      const subRecipeTargets =
+        uniqueSubRecipeLabels.length > 0
+          ? await findSubRecipeTargets(uniqueSubRecipeLabels, {
+              audience: "all",
+              includeAll: true,
+              collection: recipe.collection,
+            })
+          : {};
       const resolvedSubRecipeTargetByLabel = new Map<string, ResolvedSubRecipeTarget>();
       const uniqueTargetIds: string[] = [
         ...new Set(
-          Object.values(subRecipeTargets)
-            .filter((target): target is NonNullable<typeof target> => Boolean(target?.directMatch))
-            .map((target) => target.id),
+          [
+            ...explicitTargetIds,
+            ...Object.values(subRecipeTargets)
+              .filter((target): target is NonNullable<typeof target> =>
+                Boolean(target?.directMatch),
+              )
+              .map((target) => target.id),
+          ],
         ),
       ];
       const targetCostings = await Promise.all(
         uniqueTargetIds.map(async (targetRecipeId) => [targetRecipeId, await getRecipeCosting(targetRecipeId)] as const),
       );
       const targetCostingById = new Map(targetCostings);
+      const resolvedSubRecipeTargetById = new Map<string, ResolvedSubRecipeTarget>();
+      const resolvedSubRecipeById = new Map<string, ResolvedSubRecipeCosting>();
       const resolvedSubRecipeByLabel = new Map<string, ResolvedSubRecipeCosting>();
+
+      for (const ref of explicitSubRecipeRefs) {
+        if (!ref) continue;
+        resolvedSubRecipeTargetById.set(ref.id, {
+          label: ref.title,
+          recipeId: ref.id,
+          recipeTitle: ref.title,
+        });
+        const costing = targetCostingById.get(ref.id);
+        if (!costing || costing.costPerPortion === null) continue;
+        resolvedSubRecipeById.set(ref.id, {
+          label: ref.title,
+          recipeId: ref.id,
+          recipeTitle: ref.title,
+          recipePortions: costing.recipePortions,
+          totalCost: costing.totalCost,
+          costPerPortion: costing.costPerPortion,
+          currency: costing.currency,
+        });
+      }
 
       for (const label of uniqueSubRecipeLabels) {
         const target = subRecipeTargets[label];
@@ -218,12 +264,18 @@ export default async function OwnerRecipeCostingPage({
         });
       }
 
-      resolvedSubRecipeTargets = subRecipeLabels.map((label: string | null) =>
-        label ? (resolvedSubRecipeTargetByLabel.get(label) ?? null) : null,
-      );
-      resolvedSubRecipeCostings = subRecipeLabels.map((label: string | null) =>
-        label ? (resolvedSubRecipeByLabel.get(label) ?? null) : null,
-      );
+      resolvedSubRecipeTargets = ingredientRows.map((_: Recipe["ingredients"][number], index: number) => {
+        const ref = explicitSubRecipeRefs[index];
+        if (ref) return resolvedSubRecipeTargetById.get(ref.id) ?? null;
+        const label = subRecipeLabels[index];
+        return label ? (resolvedSubRecipeTargetByLabel.get(label) ?? null) : null;
+      });
+      resolvedSubRecipeCostings = ingredientRows.map((_: Recipe["ingredients"][number], index: number) => {
+        const ref = explicitSubRecipeRefs[index];
+        if (ref) return resolvedSubRecipeById.get(ref.id) ?? null;
+        const label = subRecipeLabels[index];
+        return label ? (resolvedSubRecipeByLabel.get(label) ?? null) : null;
+      });
     }
   } catch (error) {
     setupError = error instanceof Error ? error.message : "Recipe costing is unavailable.";
@@ -255,7 +307,7 @@ export default async function OwnerRecipeCostingPage({
   );
   const costingPortions = savedCosting?.recipePortions ?? recipe.portions;
   const resolvedSubRecipeCount = resolvedSubRecipeCostings.filter(Boolean).length;
-  const unresolvedSubRecipeCount = Math.max(ptnLineCount - resolvedSubRecipeCount, 0);
+  const unresolvedSubRecipeCount = Math.max(subRecipeLineCount - resolvedSubRecipeCount, 0);
 
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6">

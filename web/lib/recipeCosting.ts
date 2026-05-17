@@ -203,6 +203,12 @@ function normalizeIngredientSnapshot(ingredient: Partial<RecipeIngredient>) {
   };
 }
 
+function normalizeSubRecipeId(ingredient: Partial<RecipeIngredient>) {
+  const subRecipe = ingredient.subRecipe;
+  if (!subRecipe || typeof subRecipe !== "object") return null;
+  return normalizeNullableText((subRecipe as { id?: unknown }).id);
+}
+
 export function sanitizeRecipeCostLine(line: Partial<RecipeCostLine>): RecipeCostLine {
   const snapshot = normalizeIngredientSnapshot(line);
   return {
@@ -282,12 +288,11 @@ export function buildRecipeIngredientFingerprint(
   ingredients: Recipe["ingredients"] | undefined | null,
 ) {
   const snapshot = createRecipeCostLinesFromIngredients(ingredients).map(
-    ({ text, qty, unit, item }) => ({
-      text,
-      qty,
-      unit,
-      item,
-    }),
+    ({ text, qty, unit, item }, index) => {
+      const base = { text, qty, unit, item };
+      const subRecipeId = normalizeSubRecipeId(ingredients?.[index] ?? {});
+      return subRecipeId ? { ...base, subRecipeId } : base;
+    },
   );
   return JSON.stringify(snapshot);
 }
