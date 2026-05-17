@@ -234,9 +234,15 @@ export default async function RecipePage({
     sourcePdfPath: recipe.source?.pdfPath ?? null,
   });
 
-  const method = recipe.method as unknown as
-    | Array<{ _type?: string; [key: string]: unknown }>
-    | { steps?: Array<{ number?: number; text?: string }>; text?: string };
+  const rawMethod = recipe.method as unknown;
+  const method = Array.isArray(rawMethod)
+    ? (rawMethod as Array<{ _type?: string; [key: string]: unknown }>)
+    : rawMethod && typeof rawMethod === "object"
+      ? (rawMethod as { steps?: Array<{ number?: number; text?: string }>; text?: string })
+      : ({ steps: [], text: "" } as {
+          steps?: Array<{ number?: number; text?: string }>;
+          text?: string;
+        });
 
   const portionWeight =
     recipe.portionNetWeightG ??
