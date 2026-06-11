@@ -429,8 +429,8 @@ export default async function RecipesPage({
                 </Link>
               </div>
 
-              {/* <div className="flex flex-wrap gap-2"> */}
-                {/* {canViewPublic && canViewEnterprise ? (
+              <div className="flex flex-wrap gap-2">
+                {canViewPublic && canViewEnterprise ? (
                   <Link
                     href={buildRecipesHref({
                       q,
@@ -449,9 +449,9 @@ export default async function RecipesPage({
                   >
                     All available ({allCount})
                   </Link>
-                ) : null} */}
+                ) : null}
 
-                {/* {canViewPublic ? (
+                {canViewPublic ? (
                   <Link
                     href={buildRecipesHref({
                       q,
@@ -470,9 +470,9 @@ export default async function RecipesPage({
                   >
                     Public ({publicCount})
                   </Link>
-                ) : null} */}
+                ) : null}
 
-                {/* {canViewEnterprise ? (
+                {canViewEnterprise ? (
                   <Link
                     href={buildRecipesHref({
                       q,
@@ -492,9 +492,9 @@ export default async function RecipesPage({
                   >
                     Enterprise ({enterpriseCount})
                   </Link>
-                ) : null} */}
+                ) : null}
 
-                {/* <Link
+                <Link
                   href={buildRecipesHref({
                     q,
                     collection: selectedCollection,
@@ -511,8 +511,8 @@ export default async function RecipesPage({
                   })}
                 >
                   Favourites ({favoritesCount})
-                </Link> */}
-              {/* </div> */}
+                </Link>
+              </div>
 
               <form action="/recipes" method="get" className="space-y-3">
                 <input type="hidden" name="page" value="1" />
