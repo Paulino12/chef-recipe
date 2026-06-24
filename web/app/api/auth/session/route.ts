@@ -62,7 +62,19 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const userResult = await supabase.auth.getUser(accessToken);
+  let userResult: Awaited<ReturnType<typeof supabase.auth.getUser>>;
+  try {
+    userResult = await supabase.auth.getUser(accessToken);
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "Unable to reach Supabase Auth while verifying the session. Check server DNS/network access to NEXT_PUBLIC_SUPABASE_URL.",
+      },
+      { status: 503 },
+    );
+  }
+
   if (userResult.error || !userResult.data.user) {
     return NextResponse.json({ error: "Invalid session token" }, { status: 401 });
   }

@@ -30,6 +30,20 @@ function getPostSignInStatus(nextPath: string) {
   return "Opening your recipes...";
 }
 
+function getReadableSupabaseAuthError(error: { message?: string }) {
+  const message = error.message?.trim() || "";
+  const lowerMessage = message.toLowerCase();
+  if (
+    lowerMessage === "failed to fetch" ||
+    lowerMessage.includes("fetch failed") ||
+    lowerMessage.includes("network")
+  ) {
+    return "Supabase Auth is unreachable from this browser. Check that NEXT_PUBLIC_SUPABASE_URL points to the resumed project and that DNS/network access to the Supabase project host is working.";
+  }
+
+  return message || "Failed to sign in";
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -67,7 +81,7 @@ export default function SignInPage() {
       });
 
       if (signInError) {
-        setError(signInError.message || "Failed to sign in");
+        setError(getReadableSupabaseAuthError(signInError));
         return;
       }
 
